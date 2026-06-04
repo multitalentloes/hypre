@@ -189,6 +189,7 @@ hypre_ILUDestroy( void *data )
       hypre_TFree( hypre_ParILUDataDLowLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE );
       hypre_TFree( hypre_ParILUDataUppLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST );
       hypre_TFree( hypre_ParILUDataDUppLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataCombinedPermD(ilu_data),      HYPRE_MEMORY_DEVICE );
 #endif
 
       /* final residual vector */
