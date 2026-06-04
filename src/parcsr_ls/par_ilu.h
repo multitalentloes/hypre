@@ -93,6 +93,10 @@ typedef struct hypre_ParILUData_struct
    HYPRE_Int             num_upp_levels;           /* number of upper triangular level sets */
    HYPRE_Int            *upp_level_set_offsets;    /* host array, length num_upp_levels+1 */
    HYPRE_Int            *d_upp_level_set_rows;     /* device array, length n */
+
+   /* Level-set reordering: composed permutation for the solve gather/scatter.
+    * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
+   HYPRE_Int            *combined_perm_d;          /* device array, length n */
 #endif
 
    /* data structure sor solving Schur System */
@@ -166,6 +170,7 @@ typedef struct hypre_ParILUData_struct
 #define hypre_ParILUDataNumUppLevels(ilu_data)                 ((ilu_data) -> num_upp_levels)
 #define hypre_ParILUDataUppLevelSetOffsets(ilu_data)           ((ilu_data) -> upp_level_set_offsets)
 #define hypre_ParILUDataDUppLevelSetRows(ilu_data)             ((ilu_data) -> d_upp_level_set_rows)
+#define hypre_ParILUDataCombinedPermD(ilu_data)                ((ilu_data) -> combined_perm_d)
 #endif
 
 #define hypre_ParILUDataGlobalSolver(ilu_data)                 ((ilu_data) -> global_solver)

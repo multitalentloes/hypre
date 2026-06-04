@@ -206,6 +206,91 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
                                                   h_low_set_offsets, d_low_level_set_rows);
 
+         /* -----------------------------------------------------------------------
+          * Level-set row reordering of the factorized matrix.
+          *
+          * Reorder the rows (and remap column indices) of the factorized matrix
+          * so that rows belonging to the same L-level are stored contiguously.
+          * This makes L-solve row accesses sequential rather than gathered.
+          *
+          * d_low_level_set_rows already holds ls_perm:  ls_perm[new_idx] = old_idx.
+          * ----------------------------------------------------------------------- */
+
+         /* 1. Compute ls_iperm (inverse of d_low_level_set_rows):
+          *    ls_iperm[old_idx] = new_idx */
+         HYPRE_Int *d_ls_iperm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_scatter(oneapi::dpl::counting_iterator<HYPRE_Int>(0),
+                           oneapi::dpl::counting_iterator<HYPRE_Int>(num_rows),
+                           d_low_level_set_rows,
+                           d_ls_iperm);
+#else
+         HYPRE_THRUST_CALL(scatter,
+                           thrust::make_counting_iterator(0),
+                           thrust::make_counting_iterator(num_rows),
+                           d_low_level_set_rows,
+                           d_ls_iperm);
+#endif
+
+         /* 2. Remap U-level-set rows into the new (level-set) index space:
+          *    d_upp_new[i] = ls_iperm[ d_upp_old[i] ] */
+         HYPRE_Int *d_upp_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_gather(d_upp_level_set_rows, d_upp_level_set_rows + num_rows,
+                          d_ls_iperm, d_upp_level_set_rows_ls);
+#else
+         HYPRE_THRUST_CALL(gather,
+                           d_upp_level_set_rows,
+                           d_upp_level_set_rows + num_rows,
+                           d_ls_iperm,
+                           d_upp_level_set_rows_ls);
+#endif
+         hypre_TFree(d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
+         d_upp_level_set_rows = d_upp_level_set_rows_ls;
+
+         /* 3. Build combined_perm: combined_perm[i] = perm_data[ ls_perm[i] ]
+          *    This composed permutation replaces perm in the solve gather/scatter. */
+         HYPRE_Int *d_combined_perm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+         if (perm_data)
+         {
+#if defined(HYPRE_USING_SYCL)
+            hypreSycl_gather(d_low_level_set_rows, d_low_level_set_rows + num_rows,
+                             perm_data, d_combined_perm);
+#else
+            HYPRE_THRUST_CALL(gather,
+                              d_low_level_set_rows,
+                              d_low_level_set_rows + num_rows,
+                              perm_data,
+                              d_combined_perm);
+#endif
+         }
+         else
+         {
+            hypre_TMemcpy(d_combined_perm, d_low_level_set_rows, HYPRE_Int, num_rows,
+                          HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
+         }
+
+         /* 4. Create the level-set reordered copy of the factorized matrix.
+          *    Rows are permuted by ls_perm; column indices are remapped by ls_iperm. */
+         hypre_CSRMatrix *A_diag_ls = NULL;
+         hypre_CSRMatrixPermute(A_diag, d_low_level_set_rows, d_ls_iperm, &A_diag_ls);
+
+         /* 5. Replace d_low_level_set_rows with the identity {0,1,...,n-1}.
+          *    After reordering, L-level l occupies rows [offset_l, offset_{l+1}) exactly,
+          *    so no gather is needed during the L-solve. */
+         HYPRE_Int *d_low_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_sequence(d_low_level_set_rows_ls, d_low_level_set_rows_ls + num_rows, 0);
+#else
+         HYPRE_THRUST_CALL(sequence, d_low_level_set_rows_ls,
+                           d_low_level_set_rows_ls + num_rows, 0);
+#endif
+         hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
+         d_low_level_set_rows = d_low_level_set_rows_ls;
+
+         /* 6. ls_iperm is no longer needed */
+         hypre_TFree(d_ls_iperm, HYPRE_MEMORY_DEVICE);
+
          /* Store level-set data in ilu_data for the solve phase */
          hypre_ParILUDataNumLowLevels(ilu_data)       = low_num_levels;
          hypre_ParILUDataLowLevelSetOffsets(ilu_data) = h_low_set_offsets;
@@ -213,10 +298,13 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_ParILUDataNumUppLevels(ilu_data)       = upp_num_levels;
          hypre_ParILUDataUppLevelSetOffsets(ilu_data) = h_upp_set_offsets;
          hypre_ParILUDataDUppLevelSetRows(ilu_data)   = d_upp_level_set_rows;
+         hypre_ParILUDataCombinedPermD(ilu_data)      = d_combined_perm;
 
-         /* Mimicking the setup of the 'regular' ILU0*/
-         hypre_ParILUExtractEBFC(A_diag, nLU, BLUptr, &SLU, Eptr, Fptr);
+         /* Extract the reordered factorized matrix. With nLU=n (no Schur complement
+          * for ilu_type 60), BLU is the full A_diag_ls. */
+         hypre_ParILUExtractEBFC(A_diag_ls, nLU, BLUptr, &SLU, Eptr, Fptr);
          hypre_CSRMatrixDestroy(A_diag);
+         hypre_CSRMatrixDestroy(A_diag_ls);
       }
       else
       {

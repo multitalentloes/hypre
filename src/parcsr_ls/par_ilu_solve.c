@@ -65,6 +65,7 @@ hypre_ILUSolve( void               *ilu_vdata,
    HYPRE_Int             num_upp_levels     = hypre_ParILUDataNumUppLevels(ilu_data);
    HYPRE_Int            *upp_set_offsets    = hypre_ParILUDataUppLevelSetOffsets(ilu_data);
    HYPRE_Int            *d_upp_set_rows     = hypre_ParILUDataDUppLevelSetRows(ilu_data);
+   HYPRE_Int            *combined_perm      = hypre_ParILUDataCombinedPermD(ilu_data);
 #endif
 
    /* Solver settings */
@@ -258,7 +259,7 @@ hypre_ILUSolve( void               *ilu_vdata,
             if (exec == HYPRE_EXEC_DEVICE)
             {
                /* Level-set based LU solve for ilu_type 60 */
-               hypre_ILUSolveLULevelSetDevice(matA, matBLU_d, F_array, U_array, perm,
+               hypre_ILUSolveLULevelSetDevice(matA, matBLU_d, F_array, U_array, combined_perm,
                                               num_low_levels, low_set_offsets, d_low_set_rows,
                                               num_upp_levels, upp_set_offsets, d_upp_set_rows,
                                               Utemp, Ftemp);
