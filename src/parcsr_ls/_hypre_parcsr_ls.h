@@ -1312,6 +1312,15 @@ typedef struct hypre_ParILUData_struct
    /* Level-set reordering: composed permutation for the solve gather/scatter.
     * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   /* Captured GPU graphs for the level-set L and U triangular solves.
+    * Points to hypre_LevelSetSolveGraph, allocated on first solve call.
+    * Stored as void* so plain-C translation units can include this header
+    * without needing the HIP/CUDA runtime type definitions. */
+   void                     *ls_graph_L;
+   void                     *ls_graph_U;
+#endif
 #endif
 
    /* data structure sor solving Schur System */
@@ -1386,6 +1395,10 @@ typedef struct hypre_ParILUData_struct
 #define hypre_ParILUDataUppLevelSetOffsets(ilu_data)           ((ilu_data) -> upp_level_set_offsets)
 #define hypre_ParILUDataDUppLevelSetRows(ilu_data)             ((ilu_data) -> d_upp_level_set_rows)
 #define hypre_ParILUDataCombinedPermD(ilu_data)                ((ilu_data) -> combined_perm_d)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+#define hypre_ParILUDataLSGraphL(ilu_data)  ((ilu_data) -> ls_graph_L)
+#define hypre_ParILUDataLSGraphU(ilu_data)  ((ilu_data) -> ls_graph_U)
+#endif
 #endif
 
 #define hypre_ParILUDataGlobalSolver(ilu_data)                 ((ilu_data) -> global_solver)
@@ -3495,7 +3508,8 @@ HYPRE_Int hypre_ILUSolveLULevelSetDevice( hypre_ParCSRMatrix *A, hypre_CSRMatrix
                                           HYPRE_Int *d_low_set_rows,
                                           HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets,
                                           HYPRE_Int *d_upp_set_rows,
-                                          hypre_ParVector *ftemp, hypre_ParVector *utemp );
+                                          hypre_ParVector *ftemp, hypre_ParVector *utemp,
+                                          void *graph_L_data, void *graph_U_data );
 HYPRE_Int hypre_ILUApplyLowerJacIterDevice( hypre_CSRMatrix *A, hypre_Vector *input,
                                             hypre_Vector *work, hypre_Vector *output,
                                             HYPRE_Int lower_jacobi_iters );

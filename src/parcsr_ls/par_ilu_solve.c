@@ -258,6 +258,19 @@ hypre_ILUSolve( void               *ilu_vdata,
 #if defined(HYPRE_USING_GPU)
             if (exec == HYPRE_EXEC_DEVICE)
             {
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+               /* Lazily allocate graph structs on first solve call (zero-inited = NULL) */
+               if (!hypre_ParILUDataLSGraphL(ilu_data))
+               {
+                  hypre_ParILUDataLSGraphL(ilu_data) =
+                     hypre_CTAlloc(hypre_LevelSetSolveGraph, 1, HYPRE_MEMORY_HOST);
+               }
+               if (!hypre_ParILUDataLSGraphU(ilu_data))
+               {
+                  hypre_ParILUDataLSGraphU(ilu_data) =
+                     hypre_CTAlloc(hypre_LevelSetSolveGraph, 1, HYPRE_MEMORY_HOST);
+               }
+#endif
                /* Level-set based LU solve for ilu_type 60 */
                hypre_ILUSolveLULevelSetDevice(matA, matBLU_d, F_array, U_array, combined_perm,
                                               num_low_levels, low_set_offsets, d_low_set_rows,
@@ -269,7 +282,7 @@ hypre_ILUSolve( void               *ilu_vdata,
 #else
                                               NULL, NULL
 #endif
-                                              );
+                                             );
             }
             else
 #endif

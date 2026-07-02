@@ -100,9 +100,11 @@ typedef struct hypre_ParILUData_struct
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    /* Captured GPU graphs for the level-set L and U triangular solves.
-    * Populated on first solve call; replayed on all subsequent calls. */
-   hypre_LevelSetSolveGraph  ls_graph_L;
-   hypre_LevelSetSolveGraph  ls_graph_U;
+    * Points to hypre_LevelSetSolveGraph, allocated on first solve call.
+    * Stored as void* so plain-C translation units can include this header
+    * without needing the HIP/CUDA runtime type definitions. */
+   void                     *ls_graph_L;
+   void                     *ls_graph_U;
 #endif
 #endif
 
@@ -179,8 +181,8 @@ typedef struct hypre_ParILUData_struct
 #define hypre_ParILUDataDUppLevelSetRows(ilu_data)             ((ilu_data) -> d_upp_level_set_rows)
 #define hypre_ParILUDataCombinedPermD(ilu_data)                ((ilu_data) -> combined_perm_d)
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-#define hypre_ParILUDataLSGraphL(ilu_data)  (&((ilu_data) -> ls_graph_L))
-#define hypre_ParILUDataLSGraphU(ilu_data)  (&((ilu_data) -> ls_graph_U))
+#define hypre_ParILUDataLSGraphL(ilu_data)  ((ilu_data) -> ls_graph_L)
+#define hypre_ParILUDataLSGraphU(ilu_data)  ((ilu_data) -> ls_graph_U)
 #endif
 #endif
 

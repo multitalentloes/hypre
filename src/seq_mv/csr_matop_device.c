@@ -4569,27 +4569,25 @@ hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A,
  * graph_data->is_ready == 1: replay the graph directly (subsequent calls).
  *--------------------------------------------------------------------------*/
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix          *A,
-                                       HYPRE_Int                 num_low_levels,
-                                       HYPRE_Int                *low_set_offsets,
-                                       HYPRE_Int                *d_low_level_set_rows,
-                                       HYPRE_Complex            *f,
-                                       hypre_LevelSetSolveGraph *graph_data)
+hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
+                                       HYPRE_Int        num_low_levels,
+                                       HYPRE_Int       *low_set_offsets,
+                                       HYPRE_Int       *d_low_level_set_rows,
+                                       HYPRE_Complex   *f,
+                                       void            *graph_data_void)
 {
+   hypre_LevelSetSolveGraph *graph_data = (hypre_LevelSetSolveGraph *)graph_data_void;
    if (!graph_data)
    {
       return hypre_CSRMatrixILU0LevelSetLSolve(A, num_low_levels,
                                                low_set_offsets, d_low_level_set_rows, f);
    }
 
-   hypre_Handle *hypre_hdl = hypre_handle();
-   auto          stream    = hypre_HandleComputeStream(hypre_hdl);
-
    /* --- Fast path: replay captured graph -------------------------------- */
    if (graph_data->is_ready)
    {
-      hypre_LSGraphLaunch(graph_data->graph_exec, stream);
-      hypre_SyncComputeStream(hypre_hdl);
+      hypre_LSGraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+      hypre_SyncComputeStream();
       return hypre_error_flag;
    }
 
@@ -4600,7 +4598,7 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix          *A,
    HYPRE_Int       lvl, level_offset, level_set_size;
    dim3            bDim   = 128;
 
-   hypre_LSGraphStreamBeginCapture(stream);
+   hypre_LSGraphStreamBeginCapture(hypre_HandleComputeStream(hypre_handle()));
 
    for (lvl = 0; lvl < num_low_levels; lvl++)
    {
@@ -4617,13 +4615,13 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix          *A,
                        A_i, A_j, A_data, f);
    }
 
-   hypre_LSGraphStreamEndCapture(stream, &graph_data->graph);
+   hypre_LSGraphStreamEndCapture(hypre_HandleComputeStream(hypre_handle()), &graph_data->graph);
    hypre_LSGraphInstantiate(&graph_data->graph_exec, graph_data->graph);
    graph_data->is_ready = 1;
 
    /* Launch the freshly instantiated graph */
-   hypre_LSGraphLaunch(graph_data->graph_exec, stream);
-   hypre_SyncComputeStream(hypre_hdl);
+   hypre_LSGraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+   hypre_SyncComputeStream();
 
    return hypre_error_flag;
 }
@@ -4632,27 +4630,25 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix          *A,
  * hypre_CSRMatrixILU0LevelSetUSolveGraph  (analogous for the U solve)
  *--------------------------------------------------------------------------*/
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix          *A,
-                                       HYPRE_Int                 num_upp_levels,
-                                       HYPRE_Int                *upp_set_offsets,
-                                       HYPRE_Int                *d_upp_level_set_rows,
-                                       HYPRE_Complex            *f,
-                                       hypre_LevelSetSolveGraph *graph_data)
+hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
+                                       HYPRE_Int        num_upp_levels,
+                                       HYPRE_Int       *upp_set_offsets,
+                                       HYPRE_Int       *d_upp_level_set_rows,
+                                       HYPRE_Complex   *f,
+                                       void            *graph_data_void)
 {
+   hypre_LevelSetSolveGraph *graph_data = (hypre_LevelSetSolveGraph *)graph_data_void;
    if (!graph_data)
    {
       return hypre_CSRMatrixILU0LevelSetUSolve(A, num_upp_levels,
                                                upp_set_offsets, d_upp_level_set_rows, f);
    }
 
-   hypre_Handle *hypre_hdl = hypre_handle();
-   auto          stream    = hypre_HandleComputeStream(hypre_hdl);
-
    /* --- Fast path -------------------------------------------------------- */
    if (graph_data->is_ready)
    {
-      hypre_LSGraphLaunch(graph_data->graph_exec, stream);
-      hypre_SyncComputeStream(hypre_hdl);
+      hypre_LSGraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+      hypre_SyncComputeStream();
       return hypre_error_flag;
    }
 
@@ -4663,7 +4659,7 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix          *A,
    HYPRE_Int       lvl, level_offset, level_set_size;
    dim3            bDim   = 128;
 
-   hypre_LSGraphStreamBeginCapture(stream);
+   hypre_LSGraphStreamBeginCapture(hypre_HandleComputeStream(hypre_handle()));
 
    for (lvl = 0; lvl < num_upp_levels; lvl++)
    {
@@ -4680,12 +4676,12 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix          *A,
                        A_i, A_j, A_data, f);
    }
 
-   hypre_LSGraphStreamEndCapture(stream, &graph_data->graph);
+   hypre_LSGraphStreamEndCapture(hypre_HandleComputeStream(hypre_handle()), &graph_data->graph);
    hypre_LSGraphInstantiate(&graph_data->graph_exec, graph_data->graph);
    graph_data->is_ready = 1;
 
-   hypre_LSGraphLaunch(graph_data->graph_exec, stream);
-   hypre_SyncComputeStream(hypre_hdl);
+   hypre_LSGraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+   hypre_SyncComputeStream();
 
    return hypre_error_flag;
 }

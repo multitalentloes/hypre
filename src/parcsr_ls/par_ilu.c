@@ -12,6 +12,7 @@
  *****************************************************************************/
 
 #include "_hypre_parcsr_ls.h"
+#include "_hypre_utilities.hpp"
 
 /*--------------------------------------------------------------------------
  * hypre_ILUCreate
@@ -193,17 +194,23 @@ hypre_ILUDestroy( void *data )
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
       /* Destroy captured GPU graphs for level-set triangular solves */
-      if (hypre_ParILUDataLSGraphL(ilu_data)->is_ready)
       {
-         hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph_exec);
-         hypre_LSGraphDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph);
-         hypre_ParILUDataLSGraphL(ilu_data)->is_ready = 0;
-      }
-      if (hypre_ParILUDataLSGraphU(ilu_data)->is_ready)
-      {
-         hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph_exec);
-         hypre_LSGraphDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph);
-         hypre_ParILUDataLSGraphU(ilu_data)->is_ready = 0;
+         hypre_LevelSetSolveGraph *gL = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphL(ilu_data);
+         hypre_LevelSetSolveGraph *gU = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphU(ilu_data);
+         if (gL && gL->is_ready)
+         {
+            hypre_LSGraphExecDestroy(gL->graph_exec);
+            hypre_LSGraphDestroy(gL->graph);
+         }
+         hypre_TFree(gL, HYPRE_MEMORY_HOST);
+         hypre_ParILUDataLSGraphL(ilu_data) = NULL;
+         if (gU && gU->is_ready)
+         {
+            hypre_LSGraphExecDestroy(gU->graph_exec);
+            hypre_LSGraphDestroy(gU->graph);
+         }
+         hypre_TFree(gU, HYPRE_MEMORY_HOST);
+         hypre_ParILUDataLSGraphU(ilu_data) = NULL;
       }
 #endif
 #endif

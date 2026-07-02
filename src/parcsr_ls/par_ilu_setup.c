@@ -6,6 +6,7 @@
  ******************************************************************************/
 
 #include "_hypre_parcsr_ls.h"
+#include "_hypre_utilities.hpp"
 
 /*--------------------------------------------------------------------------
  * hypre_ILUSetup
@@ -161,17 +162,21 @@ hypre_ILUSetup( void               *ilu_vdata,
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    /* Invalidate cached GPU graphs — level-set row arrays are about to be
     * freed and reallocated, so any captured graphs would hold stale pointers */
-   if (hypre_ParILUDataLSGraphL(ilu_data)->is_ready)
    {
-      hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph_exec);
-      hypre_LSGraphDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph);
-      hypre_ParILUDataLSGraphL(ilu_data)->is_ready = 0;
-   }
-   if (hypre_ParILUDataLSGraphU(ilu_data)->is_ready)
-   {
-      hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph_exec);
-      hypre_LSGraphDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph);
-      hypre_ParILUDataLSGraphU(ilu_data)->is_ready = 0;
+      hypre_LevelSetSolveGraph *gL = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphL(ilu_data);
+      hypre_LevelSetSolveGraph *gU = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphU(ilu_data);
+      if (gL && gL->is_ready)
+      {
+         hypre_LSGraphExecDestroy(gL->graph_exec);
+         hypre_LSGraphDestroy(gL->graph);
+         gL->is_ready = 0;
+      }
+      if (gU && gU->is_ready)
+      {
+         hypre_LSGraphExecDestroy(gU->graph_exec);
+         hypre_LSGraphDestroy(gU->graph);
+         gU->is_ready = 0;
+      }
    }
 #endif
 

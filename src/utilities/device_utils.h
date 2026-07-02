@@ -509,7 +509,7 @@ typedef struct
 
 #if defined(HYPRE_USING_CUDA)
 #define hypre_LSGraphStreamBeginCapture(stream) \
-   HYPRE_CUDA_CALL( cudaStreamBeginCapture((stream), cudaStreamCaptureModeGlobal) )
+   HYPRE_CUDA_CALL( cudaStreamBeginCapture((stream), cudaStreamCaptureModeThreadLocal) )
 #define hypre_LSGraphStreamEndCapture(stream, pgraph) \
    HYPRE_CUDA_CALL( cudaStreamEndCapture((stream), (pgraph)) )
 #define hypre_LSGraphInstantiate(pgraph_exec, graph) \
@@ -522,7 +522,7 @@ typedef struct
    HYPRE_CUDA_CALL( cudaGraphExecDestroy(graph_exec) )
 #else  /* HIP */
 #define hypre_LSGraphStreamBeginCapture(stream) \
-   HYPRE_HIP_CALL( hipStreamBeginCapture((stream), hipStreamCaptureModeGlobal) )
+   HYPRE_HIP_CALL( hipStreamBeginCapture((stream), hipStreamCaptureModeThreadLocal) )
 #define hypre_LSGraphStreamEndCapture(stream, pgraph) \
    HYPRE_HIP_CALL( hipStreamEndCapture((stream), (pgraph)) )
 #define hypre_LSGraphInstantiate(pgraph_exec, graph) \
