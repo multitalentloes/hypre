@@ -262,7 +262,14 @@ hypre_ILUSolve( void               *ilu_vdata,
                hypre_ILUSolveLULevelSetDevice(matA, matBLU_d, F_array, U_array, combined_perm,
                                               num_low_levels, low_set_offsets, d_low_set_rows,
                                               num_upp_levels, upp_set_offsets, d_upp_set_rows,
-                                              Utemp, Ftemp);
+                                              Utemp, Ftemp,
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+                                              hypre_ParILUDataLSGraphL(ilu_data),
+                                              hypre_ParILUDataLSGraphU(ilu_data)
+#else
+                                              NULL, NULL
+#endif
+                                              );
             }
             else
 #endif

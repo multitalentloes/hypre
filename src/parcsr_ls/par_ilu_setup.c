@@ -158,6 +158,23 @@ hypre_ILUSetup( void               *ilu_vdata,
    hypre_SeqVectorDestroy(hypre_ParILUDataADiagDiag(ilu_data));
    hypre_SeqVectorDestroy(hypre_ParILUDataSDiagDiag(ilu_data));
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   /* Invalidate cached GPU graphs — level-set row arrays are about to be
+    * freed and reallocated, so any captured graphs would hold stale pointers */
+   if (hypre_ParILUDataLSGraphL(ilu_data)->is_ready)
+   {
+      hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph_exec);
+      hypre_LSGraphDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph);
+      hypre_ParILUDataLSGraphL(ilu_data)->is_ready = 0;
+   }
+   if (hypre_ParILUDataLSGraphU(ilu_data)->is_ready)
+   {
+      hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph_exec);
+      hypre_LSGraphDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph);
+      hypre_ParILUDataLSGraphU(ilu_data)->is_ready = 0;
+   }
+#endif
+
    hypre_TFree(hypre_ParILUDataLowLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST);
    hypre_TFree(hypre_ParILUDataDLowLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE);
    hypre_TFree(hypre_ParILUDataUppLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST);

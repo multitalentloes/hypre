@@ -1934,7 +1934,8 @@ HYPRE_Int hypre_ILUSolveLULevelSetDevice( hypre_ParCSRMatrix *A, hypre_CSRMatrix
                                           HYPRE_Int *d_low_set_rows,
                                           HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets,
                                           HYPRE_Int *d_upp_set_rows,
-                                          hypre_ParVector *ftemp, hypre_ParVector *utemp );
+                                          hypre_ParVector *ftemp, hypre_ParVector *utemp,
+                                          void *graph_L_data, void *graph_U_data );
 HYPRE_Int hypre_ILUApplyLowerJacIterDevice( hypre_CSRMatrix *A, hypre_Vector *input,
                                             hypre_Vector *work, hypre_Vector *output,
                                             HYPRE_Int lower_jacobi_iters );

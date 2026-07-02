@@ -97,6 +97,13 @@ typedef struct hypre_ParILUData_struct
    /* Level-set reordering: composed permutation for the solve gather/scatter.
     * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   /* Captured GPU graphs for the level-set L and U triangular solves.
+    * Populated on first solve call; replayed on all subsequent calls. */
+   hypre_LevelSetSolveGraph  ls_graph_L;
+   hypre_LevelSetSolveGraph  ls_graph_U;
+#endif
 #endif
 
    /* data structure sor solving Schur System */
@@ -171,6 +178,10 @@ typedef struct hypre_ParILUData_struct
 #define hypre_ParILUDataUppLevelSetOffsets(ilu_data)           ((ilu_data) -> upp_level_set_offsets)
 #define hypre_ParILUDataDUppLevelSetRows(ilu_data)             ((ilu_data) -> d_upp_level_set_rows)
 #define hypre_ParILUDataCombinedPermD(ilu_data)                ((ilu_data) -> combined_perm_d)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+#define hypre_ParILUDataLSGraphL(ilu_data)  (&((ilu_data) -> ls_graph_L))
+#define hypre_ParILUDataLSGraphU(ilu_data)  (&((ilu_data) -> ls_graph_U))
+#endif
 #endif
 
 #define hypre_ParILUDataGlobalSolver(ilu_data)                 ((ilu_data) -> global_solver)
