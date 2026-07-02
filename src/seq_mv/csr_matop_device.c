@@ -4373,7 +4373,7 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
  * TODO (VPM): use (sub-)warp-per-row execution model instead of thread-per-row
  *--------------------------------------------------------------------------*/
 
-__global__ void __launch_bounds__(256u)
+__global__ void __launch_bounds__(128u)
 hypreGPUKernel_CSRMatrixILU0LevelSetLSolve(hypre_DeviceItem  &item,
                                            HYPRE_Int          level_set_size,
                                            HYPRE_Int         *level_set_rows,
@@ -4476,7 +4476,7 @@ hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A,
    HYPRE_Int       lvl, level_offset, level_set_size;
 
    // TODO: autotune the block size
-   dim3 bDim = 256;
+   dim3 bDim = 128;
 
    for (lvl = 0; lvl < num_low_levels; lvl++)
    {
