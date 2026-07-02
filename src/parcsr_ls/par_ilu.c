@@ -190,6 +190,22 @@ hypre_ILUDestroy( void *data )
       hypre_TFree( hypre_ParILUDataUppLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST );
       hypre_TFree( hypre_ParILUDataDUppLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE );
       hypre_TFree( hypre_ParILUDataCombinedPermD(ilu_data),      HYPRE_MEMORY_DEVICE );
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+      /* Destroy captured GPU graphs for level-set triangular solves */
+      if (hypre_ParILUDataLSGraphL(ilu_data)->is_ready)
+      {
+         hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph_exec);
+         hypre_LSGraphDestroy(hypre_ParILUDataLSGraphL(ilu_data)->graph);
+         hypre_ParILUDataLSGraphL(ilu_data)->is_ready = 0;
+      }
+      if (hypre_ParILUDataLSGraphU(ilu_data)->is_ready)
+      {
+         hypre_LSGraphExecDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph_exec);
+         hypre_LSGraphDestroy(hypre_ParILUDataLSGraphU(ilu_data)->graph);
+         hypre_ParILUDataLSGraphU(ilu_data)->is_ready = 0;
+      }
+#endif
 #endif
 
       /* final residual vector */
