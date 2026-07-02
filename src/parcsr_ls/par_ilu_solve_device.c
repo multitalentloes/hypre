@@ -1290,8 +1290,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    /* Forward substitution: L * utemp = utemp  (in-place) */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
-                                          d_low_set_rows, utemp_data,
-                                          (hypre_LevelSetSolveGraph *)graph_L_data);
+                                          d_low_set_rows, utemp_data, graph_L_data);
 #else
    hypre_CSRMatrixILU0LevelSetLSolve(matLU_d, num_low_levels, low_set_offsets,
                                      d_low_set_rows, utemp_data);
@@ -1300,8 +1299,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    /* Backward substitution: U * utemp = utemp  (in-place) */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
-                                          d_upp_set_rows, utemp_data,
-                                          (hypre_LevelSetSolveGraph *)graph_U_data);
+                                          d_upp_set_rows, utemp_data, graph_U_data);
 #else
    hypre_CSRMatrixILU0LevelSetUSolve(matLU_d, num_upp_levels, upp_set_offsets,
                                      d_upp_set_rows, utemp_data);
