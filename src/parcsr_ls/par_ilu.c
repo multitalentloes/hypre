@@ -199,15 +199,15 @@ hypre_ILUDestroy( void *data )
          hypre_LevelSetSolveGraph *gU = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphU(ilu_data);
          if (gL && gL->is_ready)
          {
-            hypre_LSGraphExecDestroy(gL->graph_exec);
-            hypre_LSGraphDestroy(gL->graph);
+            hypre_GraphExecDestroy(gL->graph_exec);
+            hypre_GraphDestroy(gL->graph);
          }
          hypre_TFree(gL, HYPRE_MEMORY_HOST);
          hypre_ParILUDataLSGraphL(ilu_data) = NULL;
          if (gU && gU->is_ready)
          {
-            hypre_LSGraphExecDestroy(gU->graph_exec);
-            hypre_LSGraphDestroy(gU->graph);
+            hypre_GraphExecDestroy(gU->graph_exec);
+            hypre_GraphDestroy(gU->graph);
          }
          hypre_TFree(gU, HYPRE_MEMORY_HOST);
          hypre_ParILUDataLSGraphU(ilu_data) = NULL;

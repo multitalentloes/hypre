@@ -488,14 +488,14 @@ using hypre_DeviceItem = sycl::nd_item<3>;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *  GPU Graph capture type and macros (CUDA and HIP only)
  *
- *  hypre_LevelSetSolveGraph stores a captured GPU execution graph for the
- *  level-set ILU0 triangular solves.  On the first solve call the stream's
- *  entire kernel-dispatch loop is recorded; on subsequent calls the graph
- *  is replayed as a single API call, eliminating N per-level kernel launches.
+ *  Graph capture is a feature that can reduce overhead associated with
+ *  launching a known pattern of GPU kernels. If a sequence of kernels
+ *  is known to repeat, then capturing it the first time and subsequently
+ *  only launching the graph can improve performance.
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
-typedef struct
+struct hypre_LevelSetSolveGraph
 {
 #if defined(HYPRE_USING_CUDA)
    cudaGraph_t     graph;
@@ -505,33 +505,33 @@ typedef struct
    hipGraphExec_t  graph_exec;
 #endif
    HYPRE_Int       is_ready; /* 0 = not yet captured, 1 = ready for replay */
-} hypre_LevelSetSolveGraph;
+};
 
 #if defined(HYPRE_USING_CUDA)
-#define hypre_LSGraphStreamBeginCapture(stream) \
+#define hypre_GraphStreamBeginCapture(stream) \
    HYPRE_CUDA_CALL( cudaStreamBeginCapture((stream), cudaStreamCaptureModeThreadLocal) )
-#define hypre_LSGraphStreamEndCapture(stream, pgraph) \
+#define hypre_GraphStreamEndCapture(stream, pgraph) \
    HYPRE_CUDA_CALL( cudaStreamEndCapture((stream), (pgraph)) )
-#define hypre_LSGraphInstantiate(pgraph_exec, graph) \
+#define hypre_GraphInstantiate(pgraph_exec, graph) \
    HYPRE_CUDA_CALL( cudaGraphInstantiate((pgraph_exec), (graph), NULL, NULL, 0) )
-#define hypre_LSGraphLaunch(graph_exec, stream) \
+#define hypre_GraphLaunch(graph_exec, stream) \
    HYPRE_CUDA_CALL( cudaGraphLaunch((graph_exec), (stream)) )
-#define hypre_LSGraphDestroy(graph) \
+#define hypre_GraphDestroy(graph) \
    HYPRE_CUDA_CALL( cudaGraphDestroy(graph) )
-#define hypre_LSGraphExecDestroy(graph_exec) \
+#define hypre_GraphExecDestroy(graph_exec) \
    HYPRE_CUDA_CALL( cudaGraphExecDestroy(graph_exec) )
 #else  /* HIP */
-#define hypre_LSGraphStreamBeginCapture(stream) \
+#define hypre_GraphStreamBeginCapture(stream) \
    HYPRE_HIP_CALL( hipStreamBeginCapture((stream), hipStreamCaptureModeThreadLocal) )
-#define hypre_LSGraphStreamEndCapture(stream, pgraph) \
+#define hypre_GraphStreamEndCapture(stream, pgraph) \
    HYPRE_HIP_CALL( hipStreamEndCapture((stream), (pgraph)) )
-#define hypre_LSGraphInstantiate(pgraph_exec, graph) \
+#define hypre_GraphInstantiate(pgraph_exec, graph) \
    HYPRE_HIP_CALL( hipGraphInstantiate((pgraph_exec), (graph), NULL, NULL, 0) )
-#define hypre_LSGraphLaunch(graph_exec, stream) \
+#define hypre_GraphLaunch(graph_exec, stream) \
    HYPRE_HIP_CALL( hipGraphLaunch((graph_exec), (stream)) )
-#define hypre_LSGraphDestroy(graph) \
+#define hypre_GraphDestroy(graph) \
    HYPRE_HIP_CALL( hipGraphDestroy(graph) )
-#define hypre_LSGraphExecDestroy(graph_exec) \
+#define hypre_GraphExecDestroy(graph_exec) \
    HYPRE_HIP_CALL( hipGraphExecDestroy(graph_exec) )
 #endif  /* CUDA vs HIP */
 
