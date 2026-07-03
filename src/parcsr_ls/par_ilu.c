@@ -195,8 +195,8 @@ hypre_ILUDestroy( void *data )
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
       /* Destroy captured GPU graphs for level-set triangular solves */
       {
-         hypre_LevelSetSolveGraph *gL = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphL(ilu_data);
-         hypre_LevelSetSolveGraph *gU = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphU(ilu_data);
+         hypre_GPUGraphHandler *gL = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphL(ilu_data);
+         hypre_GPUGraphHandler *gU = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphU(ilu_data);
          if (gL && gL->is_ready)
          {
             hypre_GraphExecDestroy(gL->graph_exec);

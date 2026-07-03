@@ -740,7 +740,7 @@ typedef sycl::queue* hypre_DeviceStream;
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
-struct hypre_LevelSetSolveGraph
+struct hypre_GPUGraphHandler
 {
 #if defined(HYPRE_USING_CUDA)
    cudaGraph_t     graph;
