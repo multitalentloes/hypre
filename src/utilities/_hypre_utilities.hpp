@@ -713,7 +713,7 @@ using hypre_DeviceItem = sycl::nd_item<3>;
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
-struct hypre_LevelSetSolveGraph
+struct hypre_GPUGraphHandler
 {
 #if defined(HYPRE_USING_CUDA)
    cudaGraph_t     graph;

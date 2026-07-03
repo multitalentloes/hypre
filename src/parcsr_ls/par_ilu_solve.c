@@ -263,12 +263,12 @@ hypre_ILUSolve( void               *ilu_vdata,
                if (!hypre_ParILUDataLSGraphL(ilu_data))
                {
                   hypre_ParILUDataLSGraphL(ilu_data) =
-                     hypre_CTAlloc(hypre_LevelSetSolveGraph, 1, HYPRE_MEMORY_HOST);
+                     hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
                }
                if (!hypre_ParILUDataLSGraphU(ilu_data))
                {
                   hypre_ParILUDataLSGraphU(ilu_data) =
-                     hypre_CTAlloc(hypre_LevelSetSolveGraph, 1, HYPRE_MEMORY_HOST);
+                     hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
                }
 #endif
                /* Level-set based LU solve for ilu_type 60 */

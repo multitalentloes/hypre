@@ -4576,7 +4576,7 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
                                        HYPRE_Complex   *f,
                                        void            *graph_data_void)
 {
-   hypre_LevelSetSolveGraph *graph_data = (hypre_LevelSetSolveGraph *)graph_data_void;
+   hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
    if (!graph_data)
    {
       return hypre_CSRMatrixILU0LevelSetLSolve(A, num_low_levels,
@@ -4637,7 +4637,7 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
                                        HYPRE_Complex   *f,
                                        void            *graph_data_void)
 {
-   hypre_LevelSetSolveGraph *graph_data = (hypre_LevelSetSolveGraph *)graph_data_void;
+   hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
    if (!graph_data)
    {
       return hypre_CSRMatrixILU0LevelSetUSolve(A, num_upp_levels,

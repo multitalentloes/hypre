@@ -163,8 +163,8 @@ hypre_ILUSetup( void               *ilu_vdata,
    /* Invalidate cached GPU graphs — level-set row arrays are about to be
     * freed and reallocated, so any captured graphs would hold stale pointers */
    {
-      hypre_LevelSetSolveGraph *gL = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphL(ilu_data);
-      hypre_LevelSetSolveGraph *gU = (hypre_LevelSetSolveGraph *)hypre_ParILUDataLSGraphU(ilu_data);
+      hypre_GPUGraphHandler *gL = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphL(ilu_data);
+      hypre_GPUGraphHandler *gU = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphU(ilu_data);
       if (gL && gL->is_ready)
       {
          hypre_GraphExecDestroy(gL->graph_exec);
