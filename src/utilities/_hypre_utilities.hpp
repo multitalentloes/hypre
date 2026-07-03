@@ -706,10 +706,10 @@ using hypre_DeviceItem = sycl::nd_item<3>;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *  GPU Graph capture type and macros (CUDA and HIP only)
  *
- *  hypre_LevelSetSolveGraph stores a captured GPU execution graph for the
- *  level-set ILU0 triangular solves.  On the first solve call the stream's
- *  entire kernel-dispatch loop is recorded; on subsequent calls the graph
- *  is replayed as a single API call, eliminating N per-level kernel launches.
+ *  Graph capture is a feature that can reduce overhead associated with
+ *  launching a known pattern of GPU kernels. If a sequence of kernels
+ *  is known to repeat, then capturing it the first time and subsequently
+ *  only launching the graph can improve performance.
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
@@ -731,7 +731,7 @@ struct hypre_LevelSetSolveGraph
 #define hypre_GraphStreamEndCapture(stream, pgraph) \
    HYPRE_CUDA_CALL( cudaStreamEndCapture((stream), (pgraph)) )
 #define hypre_GraphInstantiate(pgraph_exec, graph) \
-   HYPRE_CUDA_CALL( cudaGraphInstantiate((pgraph_exec), (graph), NULL, NULL, 0) )
+   HYPRE_CUDA_CALL( cudaGraphInstantiate((pgraph_exec), (graph), 0) )
 #define hypre_GraphLaunch(graph_exec, stream) \
    HYPRE_CUDA_CALL( cudaGraphLaunch((graph_exec), (stream)) )
 #define hypre_GraphDestroy(graph) \

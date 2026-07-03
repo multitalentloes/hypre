@@ -513,7 +513,7 @@ struct hypre_LevelSetSolveGraph
 #define hypre_GraphStreamEndCapture(stream, pgraph) \
    HYPRE_CUDA_CALL( cudaStreamEndCapture((stream), (pgraph)) )
 #define hypre_GraphInstantiate(pgraph_exec, graph) \
-   HYPRE_CUDA_CALL( cudaGraphInstantiate((pgraph_exec), (graph), NULL, NULL, 0) )
+   HYPRE_CUDA_CALL( cudaGraphInstantiate((pgraph_exec), (graph), 0) )
 #define hypre_GraphLaunch(graph_exec, stream) \
    HYPRE_CUDA_CALL( cudaGraphLaunch((graph_exec), (stream)) )
 #define hypre_GraphDestroy(graph) \
