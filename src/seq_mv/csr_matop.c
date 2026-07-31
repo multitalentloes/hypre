@@ -2514,7 +2514,8 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
                                     HYPRE_Int       **upp_set_offsets_ptr,
                                     HYPRE_Int       **upp_level_sets_ptr,
                                     HYPRE_Int        *num_levels_low_ptr,
-                                    HYPRE_Int        *num_levels_upp_ptr)
+                                    HYPRE_Int        *num_levels_upp_ptr,
+                                    HYPRE_Int        *max_level_set_size)
 {
    /* Traverse matrix structure to verify index operations */
    HYPRE_Int   num_rows = hypre_CSRMatrixNumRows(A);
@@ -2530,6 +2531,9 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
    HYPRE_Int   num_levels_low, num_levels_upp;
    HYPRE_Int   row_idx, col_idx;
    HYPRE_Int   i, j, lvl;
+
+   /* max_level_set_size keeps track of the largest level set (counting both forward and backward solve)*/
+   *max_level_set_size = 0;
 
    /* Compute level sets for the lower triangular part of the matrix */
    /* Each row starts in level set 0, then is assigned to max(level[dep]) + 1 */
@@ -2590,6 +2594,13 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
       lvl = row_level_low[i];
       low_level_sets[fill_pos_low[lvl]++] = i;
    }
+   for (i = 0; i < num_levels_low; i++)
+   {
+      if (low_set_sizes[i] > *max_level_set_size)
+      {
+         *max_level_set_size = low_set_sizes[i];
+      }
+   }
 
    /* Compute level sets for the upper triangular part of the matrix */
    /* Traverse rows in reverse: each row depends on rows with higher index */
@@ -2644,7 +2655,13 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
       lvl = row_level_upp[i];
       upp_level_sets[fill_pos_upp[lvl]++] = i;
    }
-
+   for (i = 0; i < num_levels_upp; i++)
+   {
+      if (upp_set_sizes[i] > *max_level_set_size)
+      {
+         *max_level_set_size = upp_set_sizes[i];
+      }
+   }
    /* Temporary to validate reasonable results. */
 #ifdef DEBUG_LVLSET
    FILE *fp = fopen("level_sets.txt", "w");

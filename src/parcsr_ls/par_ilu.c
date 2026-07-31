@@ -186,11 +186,13 @@ hypre_ILUDestroy( void *data )
       hypre_SeqVectorDestroy( hypre_ParILUDataADiagDiag(ilu_data) );
       hypre_SeqVectorDestroy( hypre_ParILUDataSDiagDiag(ilu_data) );
 
-      hypre_TFree( hypre_ParILUDataLowLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST );
-      hypre_TFree( hypre_ParILUDataDLowLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataUppLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST );
-      hypre_TFree( hypre_ParILUDataDUppLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataCombinedPermD(ilu_data),      HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataLowLevelSetOffsets(ilu_data),   HYPRE_MEMORY_HOST );
+      hypre_TFree( hypre_ParILUDataDLowLevelSetRows(ilu_data),     HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataUppLevelSetOffsets(ilu_data),   HYPRE_MEMORY_HOST );
+      hypre_TFree( hypre_ParILUDataDUppLevelSetRows(ilu_data),     HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataCombinedPermD(ilu_data),        HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataDLowLevelSetOffsets(ilu_data),  HYPRE_MEMORY_DEVICE );
+      hypre_TFree( hypre_ParILUDataDUppLevelSetOffsets(ilu_data),  HYPRE_MEMORY_DEVICE );
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
       /* Destroy captured GPU graphs for level-set triangular solves */
