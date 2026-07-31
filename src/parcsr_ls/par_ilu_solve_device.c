@@ -1287,11 +1287,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
     * so we must permute the residual into the same ordering before the solves. */
    if (perm)
    {
-#if defined(HYPRE_USING_SYCL)
-      hypreSycl_gather(perm, perm + num_rows, ftemp_data, utemp_data);
-#else
       HYPRE_THRUST_CALL(gather, perm, perm + num_rows, ftemp_data, utemp_data);
-#endif
    }
    else
    {
@@ -1299,26 +1295,18 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
                     HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
    }
 
-   /* Forward substitution: L * utemp = utemp  (in-place) */
+   /* Perform forward and backward solves, either on in a single CUDA/HIP thread block or on full device */
    if (use_single_block)
    {
       hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(matLU_d, num_low_levels, d_low_set_offsets,
                                                    d_low_set_rows, max_level_set_size, utemp_data);
-   }
-   else
-   {
-      hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
-                                             d_low_set_rows, utemp_data, graph_L_data);
-   }
-
-   /* Backward substitution: U * utemp = utemp  (in-place) */
-   if (use_single_block)
-   {
       hypre_CSRMatrixILU0LevelSetUSolveSingleBlock(matLU_d, num_upp_levels, d_upp_set_offsets,
                                                    d_upp_set_rows, max_level_set_size, utemp_data);
    }
    else
    {
+      hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
+                                             d_low_set_rows, utemp_data, graph_L_data);
       hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
                                              d_upp_set_rows, utemp_data, graph_U_data);
    }
@@ -1326,11 +1314,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    /* Apply reverse permutation: scatter correction back to original ordering */
    if (perm)
    {
-#if defined(HYPRE_USING_SYCL)
-      hypreSycl_scatter(utemp_data, utemp_data + num_rows, perm, ftemp_data);
-#else
       HYPRE_THRUST_CALL(scatter, utemp_data, utemp_data + num_rows, perm, ftemp_data);
-#endif
    }
    else
    {
@@ -1346,7 +1330,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
 
 #else
    hypre_error_w_msg(HYPRE_ERROR_GENERIC,
-                     "Error: hypre_ILUSolveLULevelSetDevice called without GPU support.\n");
+                     "Error: hypre_ILUSolveLULevelSetDevice called without CUDA/HIP support.\n");
    hypre_error_flag = HYPRE_ERROR_GENERIC;
 #endif
 
