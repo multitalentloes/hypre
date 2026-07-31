@@ -1313,13 +1313,11 @@ typedef struct hypre_ParILUData_struct
     * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
 
-   /* Single-block variant of the level-set triangular solves. When the largest
-    * level set fits within one thread block (ls_max_level_set_size <=
-    * HYPRE_MAX_NTHREADS_BLOCK), the L and U solves can each be performed by a
-    * single kernel launch consisting of one thread block that loops over all
-    * levels internally, synchronizing with __syncthreads() between levels
-    * instead of launching (or graph-replaying) a kernel per level. This
-    * requires the level-set offsets to also live on the device. */
+   /* Fields used when only a single block is used to compute triangular solves
+    * If the linear systems handled are sufficiently serial it is better to use a
+    * more local synchronization method (e.g., using __syncthreads()) instead of
+    * launching a kernel per level. This does require that the level-set
+    * offsets live on the device. */
    HYPRE_Int             ls_max_level_set_size;    /* size of the largest lower/upper level set */
    HYPRE_Int             ls_use_single_block;      /* 1 if the single-block solve variant applies */
    HYPRE_Int            *d_low_level_set_offsets;  /* device array, length num_low_levels+1 */
@@ -1327,9 +1325,7 @@ typedef struct hypre_ParILUData_struct
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    /* Captured GPU graphs for the level-set L and U triangular solves.
-    * Points to hypre_GPUGraphHandler, allocated on first solve call.
-    * Stored as void* so plain-C translation units can include this header
-    * without needing the HIP/CUDA runtime type definitions. */
+    * Points to hypre_GPUGraphHandler, void* to avoid non CUDA/HIP compilation issues */
    void                     *ls_graph_L;
    void                     *ls_graph_U;
 #endif

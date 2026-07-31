@@ -4448,114 +4448,8 @@ hypreGPUKernel_CSRMatrixILU0LevelSetUSolve(hypre_DeviceItem  &item,
    f[row] = val / A_data[row_start]; /* divide by U[row,row] */
 }
 
-/*--------------------------------------------------------------------------
- * Forward substitution Lx = f (in-place, f is overwritten with x) using
- * level-set parallelism. Processes lower level sets in ascending order so
- * that all dependencies are satisfied before each kernel launch.
- *
- * Parameters:
- *   A                    - factorized CSR matrix on the device (diagonal-first)
- *   num_low_levels       - number of lower level sets
- *   low_set_offsets      - host array of length (num_low_levels + 1)
- *   d_low_level_set_rows - device array of row indices grouped by level set
- *   f                    - device vector (rhs on entry, solution on exit)
- *--------------------------------------------------------------------------*/
 
-HYPRE_Int
-hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A,
-                                  HYPRE_Int        num_low_levels,
-                                  HYPRE_Int       *low_set_offsets,
-                                  HYPRE_Int       *d_low_level_set_rows,
-                                  HYPRE_Complex   *f)
-{
-   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
-   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
-   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
-
-   /* Local variables */
-   HYPRE_Int       lvl, level_offset, level_set_size;
-
-   // TODO: autotune the block size
-   dim3 bDim = 128;
-
-   for (lvl = 0; lvl < num_low_levels; lvl++)
-   {
-      level_offset   = low_set_offsets[lvl];
-      level_set_size = low_set_offsets[lvl + 1] - level_offset;
-
-      if (level_set_size <= 0)
-      {
-         continue;
-      }
-
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(level_set_size, "thread", bDim);
-
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolve, gDim, bDim,
-                       level_set_size,
-                       d_low_level_set_rows + level_offset,
-                       A_i, A_j, A_data, f);
-   }
-
-   hypre_SyncComputeStream();
-
-   return hypre_error_flag;
-}
-
-/*--------------------------------------------------------------------------
- * Backward substitution Ux = f (in-place, f is overwritten with x) using
- * level-set parallelism. Processes upper level sets in ascending order
- * (level 0 = rows with no upper-triangular dependencies, solved first).
- *
- * Parameters:
- *   A                    - factorized CSR matrix on the device (diagonal-first)
- *   num_upp_levels       - number of upper level sets
- *   upp_set_offsets      - host array of length (num_upp_levels + 1)
- *   d_upp_level_set_rows - device array of row indices grouped by level set
- *   f                    - device vector (rhs on entry, solution on exit)
- *--------------------------------------------------------------------------*/
-
-HYPRE_Int
-hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A,
-                                  HYPRE_Int        num_upp_levels,
-                                  HYPRE_Int       *upp_set_offsets,
-                                  HYPRE_Int       *d_upp_level_set_rows,
-                                  HYPRE_Complex   *f)
-{
-   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
-   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
-   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
-
-   /* Local variables */
-   HYPRE_Int       lvl, level_offset, level_set_size;
-
-   // TODO: autotune the block size
-   dim3 bDim = 128; //hypre_GetDefaultDeviceBlockDimension();
-
-   for (lvl = 0; lvl < num_upp_levels; lvl++)
-   {
-      level_offset   = upp_set_offsets[lvl];
-      level_set_size = upp_set_offsets[lvl + 1] - level_offset;
-
-      if (level_set_size <= 0)
-      {
-         continue;
-      }
-
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(level_set_size, "thread", bDim);
-
-
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolve, gDim, bDim,
-                       level_set_size,
-                       d_upp_level_set_rows + level_offset,
-                       A_i, A_j, A_data, f);
-   }
-
-   hypre_SyncComputeStream();
-
-   return hypre_error_flag;
-}
-
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP) // needed because of __syncthreads() is CUDA/HIP specific
 
 /*--------------------------------------------------------------------------
  * GPU kernel for the single-block lower-triangular level-set forward
@@ -4753,8 +4647,11 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
    hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
    if (!graph_data)
    {
-      return hypre_CSRMatrixILU0LevelSetLSolve(A, num_low_levels,
-                                               low_set_offsets, d_low_level_set_rows, f);
+      // something has gone wrong, raise an error
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC,
+                        "Error: hypre_CSRMatrixILU0LevelSetLSolveGraph called with NULL graph_data.\n");
+      hypre_error_flag = HYPRE_ERROR_GENERIC;
+      return hypre_error_flag;
    }
 
    /* --- Fast path: replay captured graph -------------------------------- */
@@ -4814,8 +4711,11 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
    hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
    if (!graph_data)
    {
-      return hypre_CSRMatrixILU0LevelSetUSolve(A, num_upp_levels,
-                                               upp_set_offsets, d_upp_level_set_rows, f);
+      // something has gone wrong, raise an error
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC,
+                        "Error: hypre_CSRMatrixILU0LevelSetUSolveGraph called with NULL graph_data.\n");
+      hypre_error_flag = HYPRE_ERROR_GENERIC;
+      return hypre_error_flag;
    }
 
    /* --- Fast path -------------------------------------------------------- */
