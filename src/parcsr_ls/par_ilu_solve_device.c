@@ -1276,6 +1276,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       return hypre_error_flag;
    }
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    HYPRE_ANNOTATE_FUNC_BEGIN;
    hypre_GpuProfilingPushRange("ILUSolveLevelSet");
 
@@ -1299,7 +1300,6 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    }
 
    /* Forward substitution: L * utemp = utemp  (in-place) */
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    if (use_single_block)
    {
       hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(matLU_d, num_low_levels, d_low_set_offsets,
@@ -1310,13 +1310,8 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
                                              d_low_set_rows, utemp_data, graph_L_data);
    }
-#else
-   hypre_CSRMatrixILU0LevelSetLSolve(matLU_d, num_low_levels, low_set_offsets,
-                                     d_low_set_rows, utemp_data);
-#endif
 
    /* Backward substitution: U * utemp = utemp  (in-place) */
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    if (use_single_block)
    {
       hypre_CSRMatrixILU0LevelSetUSolveSingleBlock(matLU_d, num_upp_levels, d_upp_set_offsets,
@@ -1327,10 +1322,6 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
                                              d_upp_set_rows, utemp_data, graph_U_data);
    }
-#else
-   hypre_CSRMatrixILU0LevelSetUSolve(matLU_d, num_upp_levels, upp_set_offsets,
-                                     d_upp_set_rows, utemp_data);
-#endif
 
    /* Apply reverse permutation: scatter correction back to original ordering */
    if (perm)
@@ -1352,6 +1343,12 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
 
    hypre_GpuProfilingPopRange();
    HYPRE_ANNOTATE_FUNC_END;
+
+#else
+   hypre_error_w_msg(HYPRE_ERROR_GENERIC,
+                     "Error: hypre_ILUSolveLULevelSetDevice called without GPU support.\n");
+   hypre_error_flag = HYPRE_ERROR_GENERIC;
+#endif
 
    return hypre_error_flag;
 }
