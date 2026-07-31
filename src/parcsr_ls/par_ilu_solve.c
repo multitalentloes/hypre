@@ -259,16 +259,22 @@ hypre_ILUSolve( void               *ilu_vdata,
             if (exec == HYPRE_EXEC_DEVICE)
             {
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-               /* Lazily allocate graph structs on first solve call (zero-inited = NULL) */
-               if (!hypre_ParILUDataLSGraphL(ilu_data))
+               HYPRE_Int use_single_block = hypre_ParILUDataLSUseSingleBlock(ilu_data);
+
+               /* Lazily allocate graph structs on first solve call (zero-inited = NULL).
+                * Not needed when the single-block solve variant is used. */
+               if (!use_single_block)
                {
-                  hypre_ParILUDataLSGraphL(ilu_data) =
-                     hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
-               }
-               if (!hypre_ParILUDataLSGraphU(ilu_data))
-               {
-                  hypre_ParILUDataLSGraphU(ilu_data) =
-                     hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
+                  if (!hypre_ParILUDataLSGraphL(ilu_data))
+                  {
+                     hypre_ParILUDataLSGraphL(ilu_data) =
+                        hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
+                  }
+                  if (!hypre_ParILUDataLSGraphU(ilu_data))
+                  {
+                     hypre_ParILUDataLSGraphU(ilu_data) =
+                        hypre_CTAlloc(hypre_GPUGraphHandler, 1, HYPRE_MEMORY_HOST);
+                  }
                }
 #endif
                /* Level-set based LU solve for ilu_type 60 */
@@ -278,9 +284,13 @@ hypre_ILUSolve( void               *ilu_vdata,
                                               Utemp, Ftemp,
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
                                               hypre_ParILUDataLSGraphL(ilu_data),
-                                              hypre_ParILUDataLSGraphU(ilu_data)
+                                              hypre_ParILUDataLSGraphU(ilu_data),
+                                              use_single_block,
+                                              hypre_ParILUDataLSMaxLevelSetSize(ilu_data),
+                                              hypre_ParILUDataDLowLevelSetOffsets(ilu_data),
+                                              hypre_ParILUDataDUppLevelSetOffsets(ilu_data)
 #else
-                                              NULL, NULL
+                                              NULL, NULL, 0, 0, NULL, NULL
 #endif
                                              );
             }

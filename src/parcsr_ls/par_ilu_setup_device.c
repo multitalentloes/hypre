@@ -180,12 +180,13 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          HYPRE_Int *h_low_level_sets  = NULL;
          HYPRE_Int *h_upp_set_offsets = NULL;
          HYPRE_Int *h_upp_level_sets  = NULL;
-         HYPRE_Int  low_num_levels, upp_num_levels;
+         HYPRE_Int  low_num_levels, upp_num_levels, max_level_set_size;
 
          hypre_CSRMatrixComputeLevelSetsHost(A_diag_h,
                                              &h_low_set_offsets, &h_low_level_sets,
                                              &h_upp_set_offsets, &h_upp_level_sets,
-                                             &low_num_levels,    &upp_num_levels);
+                                             &low_num_levels,    &upp_num_levels,
+                                             &max_level_set_size);
 
          HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A_diag_h);
          hypre_CSRMatrixDestroy(A_diag_h);
@@ -299,6 +300,36 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_ParILUDataUppLevelSetOffsets(ilu_data) = h_upp_set_offsets;
          hypre_ParILUDataDUppLevelSetRows(ilu_data)   = d_upp_level_set_rows;
          hypre_ParILUDataCombinedPermD(ilu_data)      = d_combined_perm;
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+         /*
+          * If the largest level set fits within a single thread block, the L
+          * and U solves can each be done with a single-block kernel that
+          * loops over all levels internally (synchronizing with
+          * __syncthreads() between levels) instead of one kernel launch (or
+          * graph replay) per level. This requires the level-set offsets to
+          * also be available on the device.
+          */
+         hypre_ParILUDataLSMaxLevelSetSize(ilu_data) = max_level_set_size;
+         hypre_ParILUDataLSUseSingleBlock(ilu_data)  =
+            (max_level_set_size > 0 && max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK);
+
+         if (hypre_ParILUDataLSUseSingleBlock(ilu_data))
+         {
+            HYPRE_Int *d_low_set_offsets = hypre_TAlloc(HYPRE_Int, low_num_levels + 1,
+                                                        HYPRE_MEMORY_DEVICE);
+            HYPRE_Int *d_upp_set_offsets = hypre_TAlloc(HYPRE_Int, upp_num_levels + 1,
+                                                        HYPRE_MEMORY_DEVICE);
+
+            hypre_TMemcpy(d_low_set_offsets, h_low_set_offsets, HYPRE_Int, low_num_levels + 1,
+                          HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+            hypre_TMemcpy(d_upp_set_offsets, h_upp_set_offsets, HYPRE_Int, upp_num_levels + 1,
+                          HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+
+            hypre_ParILUDataDLowLevelSetOffsets(ilu_data) = d_low_set_offsets;
+            hypre_ParILUDataDUppLevelSetOffsets(ilu_data) = d_upp_set_offsets;
+         }
+#endif
 
          /* Extract the reordered factorized matrix. With nLU=n (no Schur complement
           * for ilu_type 60), BLU is the full A_diag_ls. */

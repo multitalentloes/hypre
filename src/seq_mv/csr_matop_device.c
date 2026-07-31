@@ -4558,6 +4558,180 @@ hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A,
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 
 /*--------------------------------------------------------------------------
+ * GPU kernel for the single-block lower-triangular level-set forward
+ * substitution. Unlike hypreGPUKernel_CSRMatrixILU0LevelSetLSolve, this
+ * kernel is launched as a single thread block and loops over all levels
+ * internally, using __syncthreads() to enforce the level-set dependency
+ * ordering instead of a kernel launch (or graph replay) per level.
+ *
+ * Only correct when level_set_offsets[lvl + 1] - level_set_offsets[lvl] <=
+ * blockDim.x for every level (see hypre_ParILUDataLSUseSingleBlock).
+ *--------------------------------------------------------------------------*/
+
+__global__ void __launch_bounds__(1024u)
+hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock(hypre_DeviceItem  &item,
+                                                      HYPRE_Int          num_levels,
+                                                      HYPRE_Int         *level_set_offsets,
+                                                      HYPRE_Int         *level_set_rows,
+                                                      HYPRE_Int         *A_i,
+                                                      HYPRE_Int         *A_j,
+                                                      HYPRE_Complex     *A_data,
+                                                      HYPRE_Complex     *f)
+{
+   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_thread_id<1>(item);
+
+   for (HYPRE_Int lvl = 0; lvl < num_levels; lvl++)
+   {
+      const HYPRE_Int level_offset   = level_set_offsets[lvl];
+      const HYPRE_Int level_set_size = level_set_offsets[lvl + 1] - level_offset;
+
+      if (tid < level_set_size)
+      {
+         const HYPRE_Int row       = level_set_rows[level_offset + tid];
+         const HYPRE_Int row_start = A_i[row];
+         const HYPRE_Int row_end   = A_i[row + 1];
+
+         /* Accumulate lower-triangular contribution (sorted ascending after diagonal) */
+         HYPRE_Complex val = f[row];
+         for (HYPRE_Int p = row_start + 1; p < row_end; p++)
+         {
+            const HYPRE_Int j = A_j[p];
+            if (j >= row)
+            {
+               break;
+            }
+            val -= A_data[p] * f[j];
+         }
+         f[row] = val;
+      }
+
+      /* Rows in the next level may depend on any row solved at this level */
+      __syncthreads();
+   }
+}
+
+/*--------------------------------------------------------------------------
+ * GPU kernel for the single-block upper-triangular level-set backward
+ * substitution. Analogous to hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock.
+ *--------------------------------------------------------------------------*/
+
+__global__ void __launch_bounds__(1024u)
+hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock(hypre_DeviceItem  &item,
+                                                      HYPRE_Int          num_levels,
+                                                      HYPRE_Int         *level_set_offsets,
+                                                      HYPRE_Int         *level_set_rows,
+                                                      HYPRE_Int         *A_i,
+                                                      HYPRE_Int         *A_j,
+                                                      HYPRE_Complex     *A_data,
+                                                      HYPRE_Complex     *f)
+{
+   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_thread_id<1>(item);
+
+   for (HYPRE_Int lvl = 0; lvl < num_levels; lvl++)
+   {
+      const HYPRE_Int level_offset   = level_set_offsets[lvl];
+      const HYPRE_Int level_set_size = level_set_offsets[lvl + 1] - level_offset;
+
+      if (tid < level_set_size)
+      {
+         const HYPRE_Int row       = level_set_rows[level_offset + tid];
+         const HYPRE_Int row_start = A_i[row];
+         const HYPRE_Int row_end   = A_i[row + 1];
+
+         /* For the upper solve we iterate from the end of the row. */
+         HYPRE_Complex val = f[row];
+         for (HYPRE_Int p = row_end - 1; p > row_start; p--)
+         {
+            if (A_j[p] < row)
+            {
+               break;
+            }
+            val -= A_data[p] * f[A_j[p]];
+         }
+         f[row] = val / A_data[row_start]; /* divide by U[row,row] */
+      }
+
+      /* Rows in the next level may depend on any row solved at this level */
+      __syncthreads();
+   }
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_CSRMatrixILU0LevelSetLSolveSingleBlock
+ *
+ * Single-block variant of hypre_CSRMatrixILU0LevelSetLSolve: forward
+ * substitution Lx = f (in-place), performed by a single thread block that
+ * loops over all level sets internally. This trades the per-level
+ * kernel-launch (or graph-replay) overhead of
+ * hypre_CSRMatrixILU0LevelSetLSolve[Graph] for a single kernel launch, at
+ * the cost of requiring the largest level set to fit within one block
+ * (max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK).
+ *
+ * Parameters:
+ *   A                    - factorized CSR matrix on the device (diagonal-first)
+ *   num_low_levels       - number of lower level sets
+ *   d_low_set_offsets    - device array of length (num_low_levels + 1)
+ *   d_low_level_set_rows - device array of row indices grouped by level set
+ *   max_level_set_size   - size of the largest level set (used as block size)
+ *   f                    - device vector (rhs on entry, solution on exit)
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(hypre_CSRMatrix *A,
+                                             HYPRE_Int        num_low_levels,
+                                             HYPRE_Int       *d_low_set_offsets,
+                                             HYPRE_Int       *d_low_level_set_rows,
+                                             HYPRE_Int        max_level_set_size,
+                                             HYPRE_Complex   *f)
+{
+   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
+   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
+   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
+
+   dim3 bDim(hypre_max(max_level_set_size, 1));
+   dim3 gDim(1);
+
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock, gDim, bDim,
+                    num_low_levels, d_low_set_offsets, d_low_level_set_rows,
+                    A_i, A_j, A_data, f);
+
+   hypre_SyncComputeStream();
+
+   return hypre_error_flag;
+}
+
+/*--------------------------------------------------------------------------
+ * hypre_CSRMatrixILU0LevelSetUSolveSingleBlock
+ *
+ * Single-block variant of hypre_CSRMatrixILU0LevelSetUSolve. Analogous to
+ * hypre_CSRMatrixILU0LevelSetLSolveSingleBlock.
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetUSolveSingleBlock(hypre_CSRMatrix *A,
+                                             HYPRE_Int        num_upp_levels,
+                                             HYPRE_Int       *d_upp_set_offsets,
+                                             HYPRE_Int       *d_upp_level_set_rows,
+                                             HYPRE_Int        max_level_set_size,
+                                             HYPRE_Complex   *f)
+{
+   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
+   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
+   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
+
+   dim3 bDim(hypre_max(max_level_set_size, 1));
+   dim3 gDim(1);
+
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock, gDim, bDim,
+                    num_upp_levels, d_upp_set_offsets, d_upp_level_set_rows,
+                    A_i, A_j, A_data, f);
+
+   hypre_SyncComputeStream();
+
+   return hypre_error_flag;
+}
+
+/*--------------------------------------------------------------------------
  * hypre_CSRMatrixILU0LevelSetLSolveGraph
  *
  * Like hypre_CSRMatrixILU0LevelSetLSolve but uses GPU-graph capture/replay

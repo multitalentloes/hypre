@@ -1228,6 +1228,13 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
  *
  * Level-set based incomplete LU solve for ilu_type == 60 (GPU).
  *
+ * On CUDA/HIP, the L and U triangular solves are performed either with:
+ *  - a single-block kernel that internally loops over all levels using
+ *    __syncthreads() between them (use_single_block != 0), used when the
+ *    largest level set fits within one thread block; or
+ *  - one captured GPU graph per solve, replayed level-by-level
+ *    (use_single_block == 0), used otherwise.
+ *
  * Follows similar structure as hypre_ILUSolveLUDevice
  *--------------------------------------------------------------------------*/
 
@@ -1246,7 +1253,11 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
                                hypre_ParVector     *ftemp,
                                hypre_ParVector     *utemp,
                                void                *graph_L_data,
-                               void                *graph_U_data)
+                               void                *graph_U_data,
+                               HYPRE_Int            use_single_block,
+                               HYPRE_Int            max_level_set_size,
+                               HYPRE_Int           *d_low_set_offsets,
+                               HYPRE_Int           *d_upp_set_offsets)
 {
 
    HYPRE_Int      num_rows    = hypre_ParCSRMatrixNumRows(A);
@@ -1289,8 +1300,16 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
 
    /* Forward substitution: L * utemp = utemp  (in-place) */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-   hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
-                                          d_low_set_rows, utemp_data, graph_L_data);
+   if (use_single_block)
+   {
+      hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(matLU_d, num_low_levels, d_low_set_offsets,
+                                                   d_low_set_rows, max_level_set_size, utemp_data);
+   }
+   else
+   {
+      hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
+                                             d_low_set_rows, utemp_data, graph_L_data);
+   }
 #else
    hypre_CSRMatrixILU0LevelSetLSolve(matLU_d, num_low_levels, low_set_offsets,
                                      d_low_set_rows, utemp_data);
@@ -1298,8 +1317,16 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
 
    /* Backward substitution: U * utemp = utemp  (in-place) */
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-   hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
-                                          d_upp_set_rows, utemp_data, graph_U_data);
+   if (use_single_block)
+   {
+      hypre_CSRMatrixILU0LevelSetUSolveSingleBlock(matLU_d, num_upp_levels, d_upp_set_offsets,
+                                                   d_upp_set_rows, max_level_set_size, utemp_data);
+   }
+   else
+   {
+      hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
+                                             d_upp_set_rows, utemp_data, graph_U_data);
+   }
 #else
    hypre_CSRMatrixILU0LevelSetUSolve(matLU_d, num_upp_levels, upp_set_offsets,
                                      d_upp_set_rows, utemp_data);

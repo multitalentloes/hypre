@@ -1313,6 +1313,18 @@ typedef struct hypre_ParILUData_struct
     * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
 
+   /* Single-block variant of the level-set triangular solves. When the largest
+    * level set fits within one thread block (ls_max_level_set_size <=
+    * HYPRE_MAX_NTHREADS_BLOCK), the L and U solves can each be performed by a
+    * single kernel launch consisting of one thread block that loops over all
+    * levels internally, synchronizing with __syncthreads() between levels
+    * instead of launching (or graph-replaying) a kernel per level. This
+    * requires the level-set offsets to also live on the device. */
+   HYPRE_Int             ls_max_level_set_size;    /* size of the largest lower/upper level set */
+   HYPRE_Int             ls_use_single_block;      /* 1 if the single-block solve variant applies */
+   HYPRE_Int            *d_low_level_set_offsets;  /* device array, length num_low_levels+1 */
+   HYPRE_Int            *d_upp_level_set_offsets;  /* device array, length num_upp_levels+1 */
+
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    /* Captured GPU graphs for the level-set L and U triangular solves.
     * Points to hypre_GPUGraphHandler, allocated on first solve call.
@@ -1395,6 +1407,10 @@ typedef struct hypre_ParILUData_struct
 #define hypre_ParILUDataUppLevelSetOffsets(ilu_data)           ((ilu_data) -> upp_level_set_offsets)
 #define hypre_ParILUDataDUppLevelSetRows(ilu_data)             ((ilu_data) -> d_upp_level_set_rows)
 #define hypre_ParILUDataCombinedPermD(ilu_data)                ((ilu_data) -> combined_perm_d)
+#define hypre_ParILUDataLSMaxLevelSetSize(ilu_data)            ((ilu_data) -> ls_max_level_set_size)
+#define hypre_ParILUDataLSUseSingleBlock(ilu_data)             ((ilu_data) -> ls_use_single_block)
+#define hypre_ParILUDataDLowLevelSetOffsets(ilu_data)          ((ilu_data) -> d_low_level_set_offsets)
+#define hypre_ParILUDataDUppLevelSetOffsets(ilu_data)          ((ilu_data) -> d_upp_level_set_offsets)
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 #define hypre_ParILUDataLSGraphL(ilu_data)  ((ilu_data) -> ls_graph_L)
 #define hypre_ParILUDataLSGraphU(ilu_data)  ((ilu_data) -> ls_graph_U)
@@ -3509,7 +3525,10 @@ HYPRE_Int hypre_ILUSolveLULevelSetDevice( hypre_ParCSRMatrix *A, hypre_CSRMatrix
                                           HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets,
                                           HYPRE_Int *d_upp_set_rows,
                                           hypre_ParVector *ftemp, hypre_ParVector *utemp,
-                                          void *graph_L_data, void *graph_U_data );
+                                          void *graph_L_data, void *graph_U_data,
+                                          HYPRE_Int use_single_block, HYPRE_Int max_level_set_size,
+                                          HYPRE_Int *d_low_set_offsets,
+                                          HYPRE_Int *d_upp_set_offsets );
 HYPRE_Int hypre_ILUApplyLowerJacIterDevice( hypre_CSRMatrix *A, hypre_Vector *input,
                                             hypre_Vector *work, hypre_Vector *output,
                                             HYPRE_Int lower_jacobi_iters );
