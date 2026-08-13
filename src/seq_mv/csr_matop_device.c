@@ -1323,23 +1323,27 @@ hypreGPUKernel_CSRMoveDiagFirst( hypre_DeviceItem    &item,
    q = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 1);
    p = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 0);
 
-   for (HYPRE_Int j = p + lane + 1; warp_any_sync(item, HYPRE_WARP_FULL_MASK, j < q);
-        j += HYPRE_WARP_SIZE)
+   if (lane == 0)
    {
-      hypre_int find_diag = j < q && ja[j] == row;
-
-      if (find_diag)
+      HYPRE_Int diag_pos = p + 1;
+      while (diag_pos < q && ja[diag_pos] != row)
       {
-         ja[j] = ja[p];
-         ja[p] = row;
-         HYPRE_Complex tmp = aa[p];
-         aa[p] = aa[j];
-         aa[j] = tmp;
+         diag_pos++;
       }
 
-      if ( warp_any_sync(item, HYPRE_WARP_FULL_MASK, find_diag) )
+      if (diag_pos < q)
       {
-         break;
+         HYPRE_Int diag_col = ja[diag_pos];
+         HYPRE_Complex diag_data = aa[diag_pos];
+
+         for (HYPRE_Int j = diag_pos; j > p; j--)
+         {
+            ja[j] = ja[j - 1];
+            aa[j] = aa[j - 1];
+         }
+
+         ja[p] = diag_col;
+         aa[p] = diag_data;
       }
    }
 }

@@ -2683,7 +2683,7 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
          fprintf(fp, "Upper level %d (size %d): ", i, upp_set_sizes[i]);
          for (j = upp_set_offsets[i]; j < upp_set_offsets[i + 1]; j++)
          {
-            fprintf(fp, "%d ", upp_level_sets[j];
+            fprintf(fp, "%d ", upp_level_sets[j]);
          }
          fprintf(fp, "\n");
       }
