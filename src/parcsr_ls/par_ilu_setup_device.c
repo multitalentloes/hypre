@@ -209,26 +209,84 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
                                                   h_low_set_offsets, d_low_level_set_rows);
 
-         /* Keep the factor in the same permuted ordering used for factorization.
-          * The level-set row lists provide the parallel execution order, so no
-          * additional row/column permutation of the factor is needed. */
+         /* Reorder the factor so rows belonging to the same lower level set are
+          * stored contiguously. The permutation is applied after factorization,
+          * so this changes only storage and vector indexing, not factor values. */
+         HYPRE_Int *d_ls_iperm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_scatter(oneapi::dpl::counting_iterator<HYPRE_Int>(0),
+                           oneapi::dpl::counting_iterator<HYPRE_Int>(num_rows),
+                           d_low_level_set_rows,
+                           d_ls_iperm);
+#else
+         HYPRE_THRUST_CALL(scatter,
+                           thrust::make_counting_iterator(0),
+                           thrust::make_counting_iterator(num_rows),
+                           d_low_level_set_rows,
+                           d_ls_iperm);
+#endif
+
+         /* Remap upper level-set rows into the reordered factor's index space. */
+         HYPRE_Int *d_upp_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
+                                                           HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_gather(d_upp_level_set_rows, d_upp_level_set_rows + num_rows,
+                          d_ls_iperm, d_upp_level_set_rows_ls);
+#else
+         HYPRE_THRUST_CALL(gather,
+                           d_upp_level_set_rows,
+                           d_upp_level_set_rows + num_rows,
+                           d_ls_iperm,
+                           d_upp_level_set_rows_ls);
+#endif
+         hypre_TFree(d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
+         d_upp_level_set_rows = d_upp_level_set_rows_ls;
+
+         /* Compose the original permutation with the level-set row permutation. */
          HYPRE_Int *d_combined_perm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
          if (perm_data)
          {
 #if defined(HYPRE_USING_SYCL)
-            HYPRE_ONEDPL_CALL(std::copy, perm_data, perm_data + num_rows, d_combined_perm);
+            hypreSycl_gather(d_low_level_set_rows, d_low_level_set_rows + num_rows,
+                             perm_data, d_combined_perm);
 #else
-            HYPRE_THRUST_CALL(copy, perm_data, perm_data + num_rows, d_combined_perm);
+            HYPRE_THRUST_CALL(gather,
+                              d_low_level_set_rows,
+                              d_low_level_set_rows + num_rows,
+                              perm_data,
+                              d_combined_perm);
 #endif
          }
          else
          {
 #if defined(HYPRE_USING_SYCL)
-            hypreSycl_sequence(d_combined_perm, d_combined_perm + num_rows, 0);
+            HYPRE_ONEDPL_CALL(std::copy, d_low_level_set_rows,
+                              d_low_level_set_rows + num_rows, d_combined_perm);
 #else
-            HYPRE_THRUST_CALL(sequence, d_combined_perm, d_combined_perm + num_rows, 0);
+            HYPRE_THRUST_CALL(copy, d_low_level_set_rows,
+                              d_low_level_set_rows + num_rows, d_combined_perm);
 #endif
          }
+
+         /* Apply the same row and inverse-column permutation to the factor.
+          * Sorting restores the ordering required by the triangular kernels. */
+         hypre_CSRMatrix *A_diag_ls = NULL;
+         hypre_CSRMatrixPermute(A_diag, d_low_level_set_rows, d_ls_iperm, &A_diag_ls);
+         hypre_CSRMatrixSortRow(A_diag_ls);
+         hypre_CSRMatrixReorder(A_diag_ls);
+
+         /* Rows are now stored in lower level-set order. */
+         HYPRE_Int *d_low_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
+                                                           HYPRE_MEMORY_DEVICE);
+#if defined(HYPRE_USING_SYCL)
+         hypreSycl_sequence(d_low_level_set_rows_ls, d_low_level_set_rows_ls + num_rows, 0);
+#else
+         HYPRE_THRUST_CALL(sequence, d_low_level_set_rows_ls,
+                           d_low_level_set_rows_ls + num_rows, 0);
+#endif
+         hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
+         d_low_level_set_rows = d_low_level_set_rows_ls;
+         hypre_TFree(d_ls_iperm, HYPRE_MEMORY_DEVICE);
 
          /* Store level-set data in ilu_data for the solve phase */
          hypre_ParILUDataNumLowLevels(ilu_data)       = low_num_levels;
@@ -269,10 +327,11 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          }
 #endif
 
-         /* Extract the factorized matrix. With nLU=n (no Schur complement for
-          * ilu_type 60), BLU is the full A_diag. */
-         hypre_ParILUExtractEBFC(A_diag, nLU, BLUptr, &SLU, Eptr, Fptr);
+         /* Extract the reordered factorized matrix. With nLU=n (no Schur
+          * complement for ilu_type 60), BLU is the full A_diag_ls. */
+         hypre_ParILUExtractEBFC(A_diag_ls, nLU, BLUptr, &SLU, Eptr, Fptr);
          hypre_CSRMatrixDestroy(A_diag);
+         hypre_CSRMatrixDestroy(A_diag_ls);
       }
       else
       {
