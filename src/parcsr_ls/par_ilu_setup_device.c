@@ -49,22 +49,31 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
       }
    }
    if (lower_entries != upper_entries) { *symmetric = 0; return 0; }
-   /* Unique lower entries map injectively to their upper reverses. Equal
-    * cardinalities make that mapping bijective, so checking lower edges alone
-    * proves structural symmetry, including entries whose values are zero. */
+   HYPRE_Int *next_upper = hypre_TAlloc(HYPRE_Int, n, HYPRE_MEMORY_HOST);
    for (HYPRE_Int row = 0; row < n; row++)
    {
-      for (HYPRE_Int p = ia[row]+1; p < ia[row+1] && ja[p] < row; p++)
+      HYPRE_Int p = ia[row] + 1;
+      while (p < ia[row + 1] && ja[p] < row) { p++; }
+      next_upper[row] = p;
+   }
+   /* Lower edges are visited in ascending row order. The reverse edges in
+    * each sorted upper row must appear in exactly that order, so one cursor
+    * per row replaces the binary search for every reverse edge. Equal edge
+    * counts make this injection a bijection, including stored zeros. */
+   for (HYPRE_Int row = 0; row < n && *symmetric; row++)
+   {
+      for (HYPRE_Int p = ia[row] + 1; p < ia[row + 1] && ja[p] < row; p++)
       {
-         HYPRE_Int col = ja[p], lo = ia[col]+1, hi = ia[col+1];
-         while (lo < hi)
+         HYPRE_Int col = ja[p], reverse = next_upper[col];
+         if (reverse == ia[col + 1] || ja[reverse] != row)
          {
-            HYPRE_Int mid = lo + (hi-lo)/2;
-            if (ja[mid] < row) { lo = mid+1; } else { hi = mid; }
+            *symmetric = 0;
+            break;
          }
-         if (lo == ia[col+1] || ja[lo] != row) { *symmetric = 0; return 0; }
+         next_upper[col]++;
       }
    }
+   hypre_TFree(next_upper, HYPRE_MEMORY_HOST);
    return 0;
 }
 
@@ -226,6 +235,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
           * and the level-set row arrays are stored in ilu_data for the solve phase.
           */
 
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60PrepareStructure");
          /* Permute A_diag: A_diag = A_diag(perm, qperm) */
          hypre_CSRMatrixPermute(hypre_ParCSRMatrixDiag(A), perm_data, rqperm_data, &A_diag);
 
@@ -234,11 +244,29 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          /* Move diagonal to first position in each row (required by level-set kernels) */
          hypre_CSRMatrixMoveDiagFirstOrderedDevice(A_diag);
 
-         /* Clone to host for level-set computation (structure only) */
-         hypre_CSRMatrix *A_diag_h = hypre_CSRMatrixClone_v2(A_diag, 0, HYPRE_MEMORY_HOST);
+         HYPRE_ANNOTATE_REGION_END("ILU60PrepareStructure");
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60HostStructure");
+         /* Only the CSR structure is needed on the host. Clone_v2 would also
+          * allocate and zero an unused nnz-sized values array. */
+         HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A_diag);
+         HYPRE_Int nnz = hypre_CSRMatrixNumNonzeros(A_diag);
+         hypre_CSRMatrix *A_diag_h = hypre_CSRMatrixCreate(num_rows,
+                                                        hypre_CSRMatrixNumCols(A_diag), nnz);
+         hypre_CSRMatrixMemoryLocation(A_diag_h) = HYPRE_MEMORY_HOST;
+         hypre_CSRMatrixI(A_diag_h) = hypre_TAlloc(HYPRE_Int, num_rows + 1, HYPRE_MEMORY_HOST);
+         hypre_CSRMatrixJ(A_diag_h) = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST);
+         hypre_TMemcpy(hypre_CSRMatrixI(A_diag_h), hypre_CSRMatrixI(A_diag), HYPRE_Int,
+                       num_rows + 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         hypre_TMemcpy(hypre_CSRMatrixJ(A_diag_h), hypre_CSRMatrixJ(A_diag), HYPRE_Int,
+                       nnz, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         HYPRE_ANNOTATE_REGION_END("ILU60HostStructure");
+
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60CheckStructure");
 
          HYPRE_Int symmetric;
-         if (hypre_ILU60CheckStructure(A_diag_h, &symmetric))
+         HYPRE_Int structure_error = hypre_ILU60CheckStructure(A_diag_h, &symmetric);
+         HYPRE_ANNOTATE_REGION_END("ILU60CheckStructure");
+         if (structure_error)
          {
             hypre_CSRMatrixDestroy(A_diag_h);
             hypre_CSRMatrixDestroy(A_diag);
@@ -252,13 +280,14 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          HYPRE_Int *h_upp_level_sets  = NULL;
          HYPRE_Int  low_num_levels, upp_num_levels, max_level_set_size;
 
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60HostLevels");
          hypre_CSRMatrixComputeLevelSetsHost(A_diag_h,
                                              &h_low_set_offsets, &h_low_level_sets,
                                              &h_upp_set_offsets, &h_upp_level_sets,
                                              &low_num_levels,    &upp_num_levels,
                                              &max_level_set_size);
 
-         HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A_diag_h);
+         HYPRE_ANNOTATE_REGION_END("ILU60HostLevels");
          hypre_CSRMatrixDestroy(A_diag_h);
 
          /* Copy level-set row arrays to device */
@@ -274,8 +303,10 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_TFree(h_upp_level_sets, HYPRE_MEMORY_HOST);
 
          /* Run level-set ILU0 factorization on the permuted device matrix */
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60Factorization");
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
                                                   h_low_set_offsets, d_low_level_set_rows);
+         HYPRE_ANNOTATE_REGION_END("ILU60Factorization");
 
          if (hypre_error_flag)
          {
@@ -287,6 +318,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
             goto ilu_device_cleanup;
          }
 
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60ReorderFactor");
          hypre_CSRMatrix *A_diag_ls = A_diag;
          HYPRE_Int *d_combined_perm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
          HYPRE_Int *d_ls_iperm = NULL, *d_low_old = NULL, *d_upp_old = NULL;
@@ -361,6 +393,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
             }
          }
 
+         HYPRE_ANNOTATE_REGION_END("ILU60ReorderFactor");
          /* Store level-set data in ilu_data for the solve phase */
          hypre_ParILUDataNumLowLevels(ilu_data)       = low_num_levels;
          hypre_ParILUDataLowLevelSetOffsets(ilu_data) = h_low_set_offsets;
@@ -372,18 +405,23 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
          /*
-          * If the largest level set fits within a single thread block, the L
-          * and U solves can each be done with a single-block kernel that
+          * If the largest level set's row groups fit within a single thread
+          * block, the L and U solves can each be done with a kernel that
           * loops over all levels internally (synchronizing with
           * __syncthreads() between levels) instead of one kernel launch (or
-          * graph replay) per level. This requires the level-set offsets to
-          * also be available on the device.
+          * graph replay) per level. Device offsets also allow graph solves to
+          * batch consecutive narrow levels into a single block.
           */
          hypre_ParILUDataLSMaxLevelSetSize(ilu_data) = max_level_set_size;
+         /* Long rows use eight cooperating threads per row in the solves.
+          * A whole-schedule single block must fit every row group, rather than
+          * merely fitting the number of rows. Keep this capacity test aligned
+          * with the triangular solve kernels' work-sharing policy. */
+         HYPRE_Int solve_group_size = num_rows && nnz / num_rows >= 32 ? 8 : 1;
          hypre_ParILUDataLSUseSingleBlock(ilu_data)  =
-            (max_level_set_size > 0 && max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK);
+            (max_level_set_size > 0 &&
+             max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK / solve_group_size);
 
-         if (hypre_ParILUDataLSUseSingleBlock(ilu_data))
          {
             HYPRE_Int *d_low_set_offsets = hypre_TAlloc(HYPRE_Int, low_num_levels + 1,
                                                         HYPRE_MEMORY_DEVICE);
@@ -400,9 +438,21 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          }
 #endif
 
-         /* Extract the reordered factorized matrix. With nLU=n (no Schur
-          * complement for ilu_type 60), BLU is the full A_diag_ls. */
-         hypre_ParILUExtractEBFC(A_diag_ls, nLU, BLUptr, &SLU, Eptr, Fptr);
+         /* Type 60 has no Schur complement. Transfer factor ownership instead
+          * of allocating/copying the entire CSR again just to destroy it below. */
+         HYPRE_ANNOTATE_REGION_BEGIN("ILU60StoreFactor");
+         if (nLU == num_rows)
+         {
+            *BLUptr = A_diag_ls;
+            *Eptr = hypre_CSRMatrixCreate(0, 0, 0);
+            *Fptr = hypre_CSRMatrixCreate(0, 0, 0);
+            hypre_CSRMatrixInitialize_v2(*Eptr, 0, memory_location);
+            hypre_CSRMatrixInitialize_v2(*Fptr, 0, memory_location);
+         }
+         else
+         {
+            hypre_ParILUExtractEBFC(A_diag_ls, nLU, BLUptr, &SLU, Eptr, Fptr);
+         }
          /* Thrust no-sync and HIP D2D copies may still reference the old row
           * arrays, inverse permutation and factor storage. Pool deallocation
           * does not wait for them. Synchronize once at the setup boundary. */
@@ -410,8 +460,12 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_TFree(d_ls_iperm, HYPRE_MEMORY_DEVICE);
          hypre_TFree(d_low_old, HYPRE_MEMORY_DEVICE);
          hypre_TFree(d_upp_old, HYPRE_MEMORY_DEVICE);
-         if (A_diag_ls != A_diag) { hypre_CSRMatrixDestroy(A_diag_ls); }
-         hypre_CSRMatrixDestroy(A_diag);
+         if (A_diag_ls != A_diag && A_diag_ls != *BLUptr)
+         {
+            hypre_CSRMatrixDestroy(A_diag_ls);
+         }
+         if (A_diag != *BLUptr) { hypre_CSRMatrixDestroy(A_diag); }
+         HYPRE_ANNOTATE_REGION_END("ILU60StoreFactor");
          if (hypre_ParILUDataPrintLevel(ilu_data) > 1)
          {
             hypre_printf("ILU60 factor levels L=%d U=%d max_width=%d symmetric_storage=%d single_block=%d\n",

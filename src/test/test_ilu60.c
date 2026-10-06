@@ -349,9 +349,11 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
             hypre_ParILUDataDUppLevelSetRows(data), 0, seed);
    for (path = 0; path < 2; path++)
    {
-      /* Internal control: offsets are allocated for matrices eligible for a
-       * single block. Setting this field to zero forces the graph path. */
-      if (path && !hypre_ParILUDataDLowLevelSetOffsets(data)) { continue; }
+      /* Device offsets serve both paths. Only force a single block when the
+       * widest level actually fits within the device block limit. */
+      HYPRE_Int group_size = n && hypre_CSRMatrixNumNonzeros(F) / n >= 32 ? 8 : 1;
+      if (path && (!hypre_ParILUDataDLowLevelSetOffsets(data) ||
+                   hypre_ParILUDataLSMaxLevelSetSize(data) > HYPRE_MAX_NTHREADS_BLOCK / group_size)) { continue; }
       hypre_ParILUDataLSUseSingleBlock(data) = path;
       for (rhs = 0; rhs < 3; rhs++)
       {
@@ -418,6 +420,7 @@ static void stream_graph(void)
    hypre_ParCSRMatrix *A = matrix(3, a, mask);
    hypre_ParVector *b = vector(3), *u = vector(3);
    HYPRE_Complex *scratch[2], host[3];
+   HYPRE_Int *alternate_offsets[2];
    HYPRE_Int original_stream = hypre_HandleComputeStreamNum(hypre_handle());
    int rep, i, error, captured = 0, before = hypre_ILU60GraphCount(0);
    HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
@@ -445,11 +448,25 @@ static void stream_graph(void)
    }
    scratch[0] = hypre_TAlloc(HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE);
    scratch[1] = hypre_TAlloc(HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE);
+   alternate_offsets[0] = hypre_TAlloc(HYPRE_Int, hypre_ParILUDataNumLowLevels(data) + 1,
+                                       HYPRE_MEMORY_DEVICE);
+   alternate_offsets[1] = hypre_TAlloc(HYPRE_Int, hypre_ParILUDataNumUppLevels(data) + 1,
+                                       HYPRE_MEMORY_DEVICE);
+   hypre_TMemcpy(alternate_offsets[0], hypre_ParILUDataDLowLevelSetOffsets(data),
+                 HYPRE_Int, hypre_ParILUDataNumLowLevels(data) + 1,
+                 HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
+   hypre_TMemcpy(alternate_offsets[1], hypre_ParILUDataDUppLevelSetOffsets(data),
+                 HYPRE_Int, hypre_ParILUDataNumUppLevels(data) + 1,
+                 HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
    case_ordering = 0; case_path = 0;
    /* Reuse on each stream, then switch back; also change captured RHS pointer. */
    for (rep = 0; rep < 8; rep++)
    {
       int which = (rep / 4) % 2;
+      HYPRE_Int *offsets[2] = {
+         rep % 2 ? alternate_offsets[0] : hypre_ParILUDataDLowLevelSetOffsets(data),
+         rep % 2 ? alternate_offsets[1] : hypre_ParILUDataDUppLevelSetOffsets(data)
+      };
       double scale = rep + 1;
       hypre_SyncDevice();
       hypre_HandleComputeStreamNum(hypre_handle()) =
@@ -461,13 +478,15 @@ static void stream_graph(void)
       case_rhs = rep;
       error = hypre_CSRMatrixILU0LevelSetLSolveGraph(
                  hypre_ParILUDataMatBILUDevice(data), hypre_ParILUDataNumLowLevels(data),
-                 hypre_ParILUDataLowLevelSetOffsets(data), hypre_ParILUDataDLowLevelSetRows(data),
+                 hypre_ParILUDataLowLevelSetOffsets(data), offsets[0],
+                 hypre_ParILUDataDLowLevelSetRows(data),
                  scratch[which], hypre_ParILUDataLSGraphL(data));
       if (!error)
       {
          error = hypre_CSRMatrixILU0LevelSetUSolveGraph(
                     hypre_ParILUDataMatBILUDevice(data), hypre_ParILUDataNumUppLevels(data),
-                    hypre_ParILUDataUppLevelSetOffsets(data), hypre_ParILUDataDUppLevelSetRows(data),
+                    hypre_ParILUDataUppLevelSetOffsets(data), offsets[1],
+                    hypre_ParILUDataDUppLevelSetRows(data),
                     scratch[which], hypre_ParILUDataLSGraphU(data));
       }
       check(!error, "stream graph solve", 3, rep);
@@ -490,7 +509,8 @@ static void stream_graph(void)
          if (graphs[i]->is_ready)
          {
             check(graphs[i]->stream == hypre_HandleComputeStream(hypre_handle()) &&
-                  graphs[i]->rhs == scratch[which], "graph cache current stream and RHS", 3, rep);
+                  graphs[i]->rhs == scratch[which] && graphs[i]->offsets == offsets[i],
+                  "graph cache current stream, RHS and level offsets", 3, rep);
          }
       }
       check(hypre_ILU60GraphCount(0) <= before + 4, "stream graph handle bound", 3, rep);
@@ -506,6 +526,8 @@ static void stream_graph(void)
    HYPRE_ILUDestroy(solver); solver = NULL;
    hypre_TFree(scratch[0], HYPRE_MEMORY_DEVICE);
    hypre_TFree(scratch[1], HYPRE_MEMORY_DEVICE);
+   hypre_TFree(alternate_offsets[0], HYPRE_MEMORY_DEVICE);
+   hypre_TFree(alternate_offsets[1], HYPRE_MEMORY_DEVICE);
 done:
    hypre_SyncDevice();
    hypre_HandleComputeStreamNum(hypre_handle()) = original_stream;
@@ -542,6 +564,80 @@ static void invalid_structure(HYPRE_Solver solver)
 }
 #endif
 
+/* Failures from a long-row cooperative factor must propagate collectively,
+ * including to an empty rank, and a valid retry must restore usable state. */
+static void distributed_longrow_failures(int rank, int active)
+{
+   const int width = 33;
+   int n = rank < active ? width : 0, i, j, issue;
+   HYPRE_BigInt total = width * active;
+   HYPRE_BigInt starts[2] = {width * (rank < active ? rank : active), 0};
+   HYPRE_Complex values[33 * 33], result[33];
+   HYPRE_Solver solver;
+   hypre_ParCSRMatrix *A;
+   hypre_ParVector *b, *u;
+   hypre_CSRMatrix *D;
+   starts[1] = starts[0] + n;
+   A = hypre_ParCSRMatrixCreate(hypre_MPI_COMM_WORLD, total, total, starts, starts, 0, n * n, 0);
+   hypre_ParCSRMatrixInitialize_v2(A, HYPRE_MEMORY_HOST);
+   D = hypre_ParCSRMatrixDiag(A);
+   for (i = 0; i < n; i++)
+   {
+      hypre_CSRMatrixI(D)[i] = i * n;
+      for (j = 0; j < n; j++)
+      {
+         hypre_CSRMatrixJ(D)[i * n + j] = j;
+         values[i * n + j] = hypre_CSRMatrixData(D)[i * n + j] = i == j ? 4 : .01;
+      }
+   }
+   hypre_CSRMatrixI(D)[n] = n * n;
+   hypre_ParCSRMatrixMigrate(A, HYPRE_MEMORY_DEVICE);
+   D = hypre_ParCSRMatrixDiag(A);
+   b = hypre_ParVectorCreate(hypre_MPI_COMM_WORLD, total, starts);
+   u = hypre_ParVectorCreate(hypre_MPI_COMM_WORLD, total, starts);
+   hypre_ParVectorInitialize_v2(b, HYPRE_MEMORY_DEVICE);
+   hypre_ParVectorInitialize_v2(u, HYPRE_MEMORY_DEVICE);
+   hypre_ParVectorSetConstantValues(b, 1);
+   HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
+   HYPRE_ILUSetMaxIter(solver, 1); HYPRE_ILUSetTol(solver, 0);
+   HYPRE_ILUSetLocalReordering(solver, 0);
+   for (issue = 0; issue < 2; issue++)
+   {
+      hypre_ParVectorSetConstantValues(u, 0);
+      if (!rank)
+      {
+         if (!issue) { values[0] = values[1] = values[width] = values[width + 1] = 1; }
+         else { values[width * width - 2] = NAN; }
+         hypre_TMemcpy(hypre_CSRMatrixData(D), values, HYPRE_Complex, n * n,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+      }
+      check(HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix) A, (HYPRE_ParVector) b,
+                           (HYPRE_ParVector) u) != 0, "MPI long-row factor failure rejected", n, issue);
+      HYPRE_ClearAllErrors();
+      check(HYPRE_ILUSolve(solver, (HYPRE_ParCSRMatrix) A, (HYPRE_ParVector) b,
+                           (HYPRE_ParVector) u) != 0, "MPI long-row failed setup disables solve", n, issue);
+      HYPRE_ClearAllErrors();
+      if (!rank)
+      {
+         for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+               values[i * n + j] = i == j ? 4 : .01;
+         hypre_TMemcpy(hypre_CSRMatrixData(D), values, HYPRE_Complex, n * n,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+      }
+      check(!HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix) A, (HYPRE_ParVector) b,
+                            (HYPRE_ParVector) u), "MPI long-row setup recovery", n, issue);
+      check(!HYPRE_ILUSolve(solver, (HYPRE_ParCSRMatrix) A, (HYPRE_ParVector) b,
+                            (HYPRE_ParVector) u), "MPI long-row solve recovery", n, issue);
+      hypre_TMemcpy(result, hypre_VectorData(hypre_ParVectorLocalVector(u)), HYPRE_Complex, n,
+                    HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+      for (i = 0; i < n; i++)
+            numerical_check(result[i], 1 / (4 + (width - 1) * .01), ORACLE_TOL,
+                            "MPI long-row recovered correction", n, issue, i);
+   }
+   HYPRE_ILUDestroy(solver); hypre_ParCSRMatrixDestroy(A);
+   hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
+}
+
 /* Distributed integration: at least two active ranks and one empty rank.
  * Off-rank entries remain outside the local ILU, preserving block Jacobi. */
 static void distributed(void)
@@ -557,7 +653,9 @@ static void distributed(void)
    hypre_MPI_Comm_size(hypre_MPI_COMM_WORLD, &size);
    check(size >= 3, "MPI integration needs at least 3 ranks", size, 0);
    if (size < 3) { return; }
-   active = size - 1; n = rank < active ? 3 : 0; total = 3 * active;
+   active = size - 1;
+   distributed_longrow_failures(rank, active);
+   n = rank < active ? 3 : 0; total = 3 * active;
    starts[0] = 3 * (rank < active ? rank : active); starts[1] = starts[0] + n;
    local = matrix(n, a, mask);
    /* The assembled distributed matrix is host-resident until both blocks are
@@ -726,6 +824,40 @@ static int test_main(int argc, char **argv)
       }
    }
    {
+      /* Long rows select cooperative graph kernels: 65 independent rows
+       * followed by 65 dependent rows exercise partial blocks and batches.
+       * Both GPU paths are checked against the independent scalar oracle. */
+      int n = 130, i, j;
+      double *a = (double *) calloc(n * n, sizeof(double));
+      int *mask = (int *) calloc(n * n, sizeof(int));
+      for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+      {
+         mask[i * n + j] = i == j || i >= 65 || j >= 65;
+         a[i * n + j] = mask[i * n + j] ? (i == j ? 4 : ((i + j) % 3 - 1) * .01) : 0;
+      }
+      run(solver, n, a, mask, 0, 0, 83226);
+      run(solver, n, a, mask, 1, 0, 83226);
+      /* Keep the long-row execution model while forcing the asymmetric
+       * structure fallback: one stored edge has no reverse edge. */
+      mask[3 * n + 100] = 0; a[3 * n + 100] = 0;
+      a[100 * n + 3] = .01;
+      run(solver, n, a, mask, 0, 0, 83326);
+      run(solver, n, a, mask, 1, 0, 83326);
+      mask[3 * n + 100] = 1;
+      a[3 * n + 100] = a[100 * n + 3] = 0;
+      {
+         double small = sizeof(HYPRE_Real) == sizeof(float) ? 1e-10 : 1e-40;
+         double large = 1 / small;
+         for (i = 0; i < n * n; i++) { a[i] *= small; }
+         run(solver, n, a, mask, 0, 0, 83227);
+         run(solver, n, a, mask, 1, 0, 83227);
+         for (i = 0; i < n * n; i++) { a[i] *= large / small; }
+         run(solver, n, a, mask, 0, 0, 83228);
+         run(solver, n, a, mask, 1, 0, 83228);
+      }
+      free(a); free(mask);
+   }
+   {
       int widths[] = {1, 31, 32, 33, 63, 64, 65, 127, 128, 129, 1023, 1024, 1025}, w;
       for (w = 0; w < 13; w++)
       {
@@ -751,6 +883,26 @@ static int test_main(int argc, char **argv)
          run(solver, n, a, mask, 0, 0, 17);
          free(a); free(mask);
       }
+   }
+   {
+      /* Lower and upper levels have widths 1,1,129,1,1. This exercises a
+       * narrow batch on each side of a level requiring multiple blocks. */
+      int n = 133, i;
+      double *a = (double *) calloc(n * n, sizeof(double));
+      int *mask = (int *) calloc(n * n, sizeof(int));
+      for (i = 0; i < n; i++) { a[i * n + i] = 8; mask[i * n + i] = 1; }
+      mask[1] = mask[n] = mask[131 * n + 132] = mask[132 * n + 131] = 1;
+      a[1] = a[131 * n + 132] = .02;
+      a[n] = a[132 * n + 131] = .01;
+      for (i = 2; i <= 130; i++)
+      {
+         mask[n + i] = mask[i * n + 1] = 1;
+         a[n + i] = .02; a[i * n + 1] = .01;
+         mask[i * n + 131] = mask[131 * n + i] = 1;
+         a[i * n + 131] = .02; a[131 * n + i] = .01;
+      }
+      run(solver, n, a, mask, 0, 0, 72826);
+      free(a); free(mask);
    }
    {
       double a[4] = {1, 1, 1, 1}; int mask[4] = {1, 1, 1, 1};

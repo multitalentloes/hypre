@@ -1223,6 +1223,26 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
    return hypre_error_flag;
 }
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+/* Each correction has a unique destination because perm is a permutation.
+ * Fuse the inverse permutation with the solution update to avoid writing and
+ * rereading a temporary vector between scatter and axpy. */
+__global__ void
+hypreGPUKernel_ILU60Update(hypre_DeviceItem &item,
+                          HYPRE_Int       num_rows,
+                          HYPRE_Int      *perm,
+                          HYPRE_Complex  *correction,
+                          HYPRE_Complex  *solution)
+{
+   const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (row < num_rows)
+   {
+      const HYPRE_Int destination = perm ? perm[row] : row;
+      solution[destination] += correction[row];
+   }
+}
+#endif
+
 /*--------------------------------------------------------------------------
  * hypre_ILUSolveLULevelSetDevice
  *
@@ -1308,11 +1328,11 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    else
    {
       hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
-                                             d_low_set_rows, utemp_data, graph_L_data);
+                                             d_low_set_offsets, d_low_set_rows, utemp_data, graph_L_data);
       if (!hypre_error_flag)
       {
          hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
-                                              d_upp_set_rows, utemp_data, graph_U_data);
+                                              d_upp_set_offsets, d_upp_set_rows, utemp_data, graph_U_data);
       }
    }
 
@@ -1323,19 +1343,14 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       return hypre_error_flag;
    }
 
-   /* Apply reverse permutation: scatter correction back to original ordering */
-   if (perm)
-   {
-      HYPRE_THRUST_CALL(scatter, utemp_data, utemp_data + num_rows, perm, ftemp_data);
-   }
-   else
-   {
-      hypre_TMemcpy(ftemp_data, utemp_data, HYPRE_Complex, num_rows,
-                    HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
-   }
-
-   /* Update solution: u = u + ftemp */
-   hypre_ParVectorAxpy(beta, ftemp, u);
+   /* Scatter the correction directly into the solution update. The residual
+    * operation overwrites ftemp on the next application. */
+   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
+   dim3 gDim = hypre_GetDefaultDeviceGridDimension(num_rows, "thread", bDim);
+   HYPRE_Complex *u_data = hypre_VectorData(hypre_ParVectorLocalVector(u));
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_ILU60Update, gDim, bDim,
+                    num_rows, perm, utemp_data, u_data);
+   hypre_SyncComputeStream();
 
    hypre_GpuProfilingPopRange();
    HYPRE_ANNOTATE_FUNC_END;

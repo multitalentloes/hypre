@@ -519,7 +519,7 @@ struct hypre_GPUGraphHandler
    hipStream_t     stream;
 #endif
    HYPRE_Int       is_ready; /* published only after successful instantiation */
-   const void     *ia, *ja, *values, *rows, *rhs; /* captured pointer identity */
+   const void     *ia, *ja, *values, *rows, *offsets, *rhs; /* captured pointer identity */
 };
 
 #if defined(HYPRE_USING_CUDA)
