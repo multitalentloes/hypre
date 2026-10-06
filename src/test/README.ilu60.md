@@ -75,19 +75,36 @@ counts, independent residuals, build settings, and binary/source hashes.
 The measured configuration files and raw logs should accompany a performance
 claim; this command alone does not specify every default of the driver.
 
-Reference results before the PR cleanup (milliseconds, 112 cubed, 70 iterations
-for every configuration):
+Post-merge measurement at code revision `5cba6db83`, based on local master
+`ed2fd68fc`, compared with preserved original type 60 `a9a763208`. The companion
+result set is `v1-correctness-20261006-125018`. Values below are milliseconds,
+112 cubed; every retained solve took 70 iterations.
 
-| Configuration | Setup mean | Solve mean | Combined mean | Maximum relative residual |
+| Configuration | Setup mean ± SD | Solve mean ± SD | Combined mean ± SD | Maximum relative residual |
 | --- | ---: | ---: | ---: | ---: |
-| Original type 60 | 33.811 | 553.887 | 587.697 | 7.90e-7 |
-| Repaired type 60 | 64.115 | 554.835 | 618.950 | 7.90e-7 |
-| Type 0 | 17.685 | 680.694 | 698.379 | 4.74e-7 |
+| Original type 60 | 33.698 ± 0.393 | 555.791 ± 0.415 | 589.489 ± 0.531 | 7.90e-07 |
+| Repaired type 60 | 63.910 ± 0.711 | 556.502 ± 0.493 | 620.412 ± 0.578 | 7.90e-07 |
+| Type 0 | 17.771 ± 0.101 | 685.395 ± 0.523 | 703.166 ± 0.508 | 4.74e-07 |
 
-The repair retained the solve-time benefit on this workload, while increasing
-setup cost: combined time rose 5.3% relative to original type 60 and remained
-11.4% below type 0. These are workload-specific measurements. The original
-implementation fails the independent asymmetric-pattern regression, so its
-timing does not establish correctness. Remeasure the final source and intended
-applications before making broader performance claims. CUDA runtime, SYCL
-build, and device sanitizer validation were not established by this HIP run.
+First setup/solve costs, batches 1 and 2 (milliseconds):
+
+- Original type 60: 191.165/555.397; 191.693/555.789.
+- Repaired type 60: 225.659/555.595; 237.551/556.345.
+- Type 0: 84.439/725.779; 82.579/725.545.
+
+The repaired solve is 0.128% slower than original type 60 and 18.806% faster
+than type 0. Combined time is 5.246% above original and 11.769% below type 0.
+The primary solve-time target is preserved, but setup/total-cost preservation
+is unmet. The added validation runs at setup; no claim is made that the
+remaining overhead is the minimum achievable cost. The original implementation
+fails the independent asymmetric-pattern regression, so its timing does not
+establish correctness.
+
+These results are workload-specific: type 0 is faster on the measured 64-cubed
+Laplacian and elasticity case. Extra reversed elasticity batches reproduced
+order sensitivity in original type 60 (~1245 versus ~1320 ms), while repaired
+solve stayed ~1243-1247 ms. Its cause was not isolated; do not infer an
+unconditional repair speedup from pooled elasticity means. Attach raw data and
+source/build provenance when using these data in a PR. CUDA compilation and
+CPU rejection tests passed; CUDA runtime tests skipped without a usable GPU.
+SYCL compilation and device sanitizer validation remain unverified.
