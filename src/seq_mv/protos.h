@@ -344,11 +344,11 @@ hypre_GpuMatData* hypre_CSRMatrixGetGPUMatData(hypre_CSRMatrix *matrix);
 
 HYPRE_Int hypre_CSRMatrixSpMVAnalysisDevice(hypre_CSRMatrix *matrix);
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
                                                    HYPRE_Int        num_low_levels,
                                                    HYPRE_Int       *low_set_offsets,
                                                    HYPRE_Int       *d_low_level_set_rows);
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(hypre_CSRMatrix *A,
                                                        HYPRE_Int        num_low_levels,
                                                        HYPRE_Int       *d_low_set_offsets,

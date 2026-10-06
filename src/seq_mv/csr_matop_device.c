@@ -4445,6 +4445,8 @@ hypre_CSRMatrixSpMVAnalysisDevice(hypre_CSRMatrix *matrix)
    return hypre_error_flag;
 }
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+
 /*--------------------------------------------------------------------------
  * In-place ILU0 factorization of rows in a single level set.
  *
@@ -4701,7 +4703,6 @@ hypreGPUKernel_CSRMatrixILU0LevelSetUSolve(hypre_DeviceItem  &item,
 }
 
 
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP) // needed because of __syncthreads() is CUDA/HIP specific
 
 /*--------------------------------------------------------------------------
  * GPU kernel for the single-block lower-triangular level-set forward
