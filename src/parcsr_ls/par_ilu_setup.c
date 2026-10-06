@@ -12,6 +12,64 @@
  * hypre_ILUSetup
  *--------------------------------------------------------------------------*/
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+static int
+hypre_ILU60CompareColumn(const void *a, const void *b)
+{
+   HYPRE_Int x = *(const HYPRE_Int *) a, y = *(const HYPRE_Int *) b;
+   return (x > y) - (x < y);
+}
+
+/* Bounds and uniqueness must be checked before any device permutation uses
+ * column indices as addresses. A host copy is already required by scheduling. */
+static HYPRE_Int
+hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
+{
+   hypre_CSRMatrix *h = hypre_CSRMatrixClone_v2(A, 0, HYPRE_MEMORY_HOST);
+   HYPRE_Int n = hypre_CSRMatrixNumRows(h), nnz = hypre_CSRMatrixNumNonzeros(h);
+   HYPRE_Int *ia = hypre_CSRMatrixI(h), *ja = hypre_CSRMatrixJ(h);
+   HYPRE_Int bad = n != hypre_CSRMatrixNumCols(h) || ia[0] != 0 || ia[n] != nnz;
+   HYPRE_Int *columns = NULL;
+   for (HYPRE_Int row = 0; row < n && !bad; row++)
+   {
+      HYPRE_Int diag = 0, size = ia[row+1] - ia[row];
+      HYPRE_Int ordered = 1, previous = -1;
+      if (ia[row] < 0 || size <= 0 || ia[row+1] > nnz) { bad = 1; break; }
+      for (HYPRE_Int p = ia[row]; p < ia[row+1]; p++)
+      {
+         bad |= ja[p] < 0 || ja[p] >= n;
+         diag += ja[p] == row;
+         /* Ignore the diagonal's position: both numeric column order and
+          * diagonal-first storage can have strictly ordered off-diagonals. */
+         if (ja[p] != row)
+         {
+            ordered &= ja[p] > previous;
+            previous = ja[p];
+         }
+      }
+      bad |= diag != 1;
+      /* Bounded, strictly increasing off-diagonals and one diagonal prove
+       * uniqueness without sorting. Retain the general unordered-row check. */
+      if (!bad && !ordered)
+      {
+         if (!columns) { columns = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST); }
+         for (HYPRE_Int p = 0; p < size; p++) { columns[p] = ja[ia[row]+p]; }
+         qsort(columns, size, sizeof(HYPRE_Int), hypre_ILU60CompareColumn);
+         for (HYPRE_Int p = 1; p < size; p++) { bad |= columns[p-1] == columns[p]; }
+      }
+      if (bad)
+      {
+         char msg[160];
+         hypre_sprintf(msg, "ILU60 invalid CSR, duplicate/out-of-range column or missing diagonal at local row %d", row);
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
+      }
+   }
+   hypre_TFree(columns, HYPRE_MEMORY_HOST);
+   hypre_CSRMatrixDestroy(h);
+   return bad;
+}
+#endif
+
 HYPRE_Int
 hypre_ILUSetup( void               *ilu_vdata,
                 hypre_ParCSRMatrix *A,
@@ -109,6 +167,8 @@ hypre_ILUSetup( void               *ilu_vdata,
 
 #if defined (HYPRE_USING_GPU)
    HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1(hypre_ParCSRMatrixMemoryLocation(A));
+   HYPRE_MemoryLocation perm_memory_location = matBLU_d ? hypre_CSRMatrixMemoryLocation(matBLU_d) :
+                                              (matL ? hypre_ParCSRMatrixMemoryLocation(matL) : memory_location);
 
    /* TODO (VPM): Placeholder check to avoid -Wunused-variable warning. Remove this! */
    if (exec != HYPRE_EXEC_DEVICE && exec != HYPRE_EXEC_HOST)
@@ -117,6 +177,40 @@ hypre_ILUSetup( void               *ilu_vdata,
       return hypre_error_flag;
    }
 #endif
+
+   /* Type 60 has an exact ILU0 CUDA/HIP contract. */
+   if (ilu_type == 60)
+   {
+#if defined(HYPRE_USING_GPU)
+      hypre_ILULevelSetCleanup(ilu_data);
+      /* An unsuccessful setup must not leave an automatically generated
+       * permutation available for a later setup with a different size/type. */
+      if (qperm != perm) { hypre_TFree(qperm, perm_memory_location); }
+      hypre_TFree(perm, perm_memory_location);
+      qperm = NULL;
+      hypre_ParILUDataPerm(ilu_data) = NULL;
+      hypre_ParILUDataQPerm(ilu_data) = NULL;
+#endif
+#if !defined(HYPRE_USING_CUDA) && !defined(HYPRE_USING_HIP)
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU type 60 requires CUDA/HIP device execution");
+      return hypre_error_flag;
+#else
+      if (exec != HYPRE_EXEC_DEVICE || fill_level != 0 || !tri_solve ||
+          hypre_ParILUDataIterativeSetupType(ilu_data))
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC,
+                           "ILU type 60 requires device execution, fill=0, direct solves and noniterative setup");
+         return hypre_error_flag;
+      }
+      HYPRE_Int invalid = hypre_ILU60ValidateInput(hypre_ParCSRMatrixDiag(A)), any_invalid;
+      hypre_MPI_Allreduce(&invalid, &any_invalid, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
+      if (any_invalid)
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 invalid local factor structure on a rank");
+         return hypre_error_flag;
+      }
+#endif
+   }
 
    /* Sanity checks */
 #if defined(HYPRE_USING_CUDA) && !defined(HYPRE_USING_CUSPARSE)
@@ -144,6 +238,15 @@ hypre_ILUSetup( void               *ilu_vdata,
    hypre_MPI_Comm_rank(comm, &my_id);
 
 #if defined(HYPRE_USING_GPU)
+   if (ilu_type == 60 || ilu_data->combined_perm_d)
+   {
+      if (qperm != perm) { hypre_TFree(qperm, perm_memory_location); }
+      hypre_TFree(perm, perm_memory_location);
+      qperm = NULL;
+      hypre_ParILUDataPerm(ilu_data) = NULL;
+      hypre_ParILUDataQPerm(ilu_data) = NULL;
+   }
+   hypre_ILULevelSetCleanup(ilu_data);
    hypre_CSRMatrixDestroy(matALU_d); matALU_d = NULL;
    hypre_CSRMatrixDestroy(matSLU_d); matSLU_d = NULL;
    hypre_CSRMatrixDestroy(matBLU_d); matBLU_d = NULL;
@@ -160,32 +263,6 @@ hypre_ILUSetup( void               *ilu_vdata,
    hypre_ParVectorDestroy(hypre_ParILUDataZTemp(ilu_data));
    hypre_SeqVectorDestroy(hypre_ParILUDataADiagDiag(ilu_data));
    hypre_SeqVectorDestroy(hypre_ParILUDataSDiagDiag(ilu_data));
-
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-   /* Invalidate cached GPU graphs — level-set row arrays are about to be
-    * freed and reallocated, so any captured graphs would hold stale pointers */
-   {
-      hypre_GPUGraphHandler *gL = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphL(ilu_data);
-      hypre_GPUGraphHandler *gU = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphU(ilu_data);
-      if (gL && gL->is_ready)
-      {
-         hypre_GraphExecDestroy(gL->graph_exec);
-         hypre_GraphDestroy(gL->graph);
-         gL->is_ready = 0;
-      }
-      if (gU && gU->is_ready)
-      {
-         hypre_GraphExecDestroy(gU->graph_exec);
-         hypre_GraphDestroy(gU->graph);
-         gU->is_ready = 0;
-      }
-   }
-#endif
-
-   hypre_TFree(hypre_ParILUDataLowLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST);
-   hypre_TFree(hypre_ParILUDataDLowLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE);
-   hypre_TFree(hypre_ParILUDataUppLevelSetOffsets(ilu_data), HYPRE_MEMORY_HOST);
-   hypre_TFree(hypre_ParILUDataDUppLevelSetRows(ilu_data),   HYPRE_MEMORY_DEVICE);
 
    hypre_ParILUDataFTempUpper(ilu_data) = NULL;
    hypre_ParILUDataUTempLower(ilu_data) = NULL;
@@ -513,6 +590,22 @@ hypre_ILUSetup( void               *ilu_vdata,
          }
          break;
    }
+
+#if defined(HYPRE_USING_GPU)
+   if (ilu_type == 60)
+   {
+      HYPRE_Int failed = hypre_error_flag != 0, any_failed;
+      hypre_MPI_Allreduce(&failed, &any_failed, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
+      if (any_failed)
+      {
+         hypre_ILULevelSetCleanup(ilu_data);
+         hypre_CSRMatrixDestroy(matBLU_d); matBLU_d = NULL;
+         hypre_CSRMatrixDestroy(matE_d); matE_d = NULL;
+         hypre_CSRMatrixDestroy(matF_d); matF_d = NULL;
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU type 60 setup failed on a rank");
+      }
+   }
+#endif
 
    /* Create additional temporary vector for iterative triangular solve */
    if (!tri_solve)
@@ -1343,6 +1436,16 @@ hypre_ILUSetup( void               *ilu_vdata,
                                  HYPRE_MEMORY_HOST);
    hypre_ParILUDataRelResNorms(ilu_data) = rel_res_norms;
 
+#if defined(HYPRE_USING_GPU)
+   if (ilu_type == 60)
+   {
+      ilu_data->ls_ready = !hypre_error_flag;
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+      ilu_data->ls_device = hypre_HandleDevice(hypre_handle());
+      ilu_data->ls_last_stream = (void *) hypre_HandleComputeStream(hypre_handle());
+#endif
+   }
+#endif
    hypre_GpuProfilingPopRange();
    HYPRE_ANNOTATE_FUNC_END;
 

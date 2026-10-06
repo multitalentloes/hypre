@@ -1681,6 +1681,9 @@ HYPRE_Int hypre_MGRBuildRFromWrDevice(hypre_IntArray *C_map, hypre_IntArray *F_m
 HYPRE_Int hypre_MGRSetupStats( void *mgr_vdata );
 
 /* par_ilu.c */
+#if defined(HYPRE_USING_GPU)
+HYPRE_Int hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data);
+#endif
 void *hypre_ILUCreate ( void );
 HYPRE_Int hypre_ILUDestroy ( void *ilu_vdata );
 const char* hypre_ILUGetName( void *ilu_vdata );

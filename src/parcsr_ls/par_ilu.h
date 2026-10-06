@@ -86,6 +86,10 @@ typedef struct hypre_ParILUData_struct
    hypre_Vector         *Adiag_diag;
    hypre_Vector         *Sdiag_diag;
 
+   void                 *ls_last_stream;
+   HYPRE_Int             ls_device;
+   HYPRE_Int             ls_ready; /* complete successful type-60 setup */
+
    /* Level-set data for ilu_type 60 triangular solves */
    HYPRE_Int             num_low_levels;           /* number of lower triangular level sets */
    HYPRE_Int            *low_level_set_offsets;    /* host array, length num_low_levels+1 */
@@ -95,7 +99,8 @@ typedef struct hypre_ParILUData_struct
    HYPRE_Int            *d_upp_level_set_rows;     /* device array, length n */
 
    /* Level-set reordering: composed permutation for the solve gather/scatter.
-    * combined_perm_d[i] = perm[ls_perm[i]], mapping level-set order -> original order. */
+    * combined_perm_d[i] maps storage order to original order; the storage
+    * permutation is composed only for structurally symmetric patterns. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
 
    /* Fields used when only a single block is used to compute triangular solves

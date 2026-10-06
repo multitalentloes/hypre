@@ -393,6 +393,7 @@ hypre_CSRMatrix* hypre_CSRMatrixAddPartialDevice( hypre_CSRMatrix *A, hypre_CSRM
                                                   HYPRE_Int *row_nums);
 HYPRE_Int hypre_CSRMatrixColNNzRealDevice( hypre_CSRMatrix *A, HYPRE_Real *colnnz);
 HYPRE_Int hypre_CSRMatrixMoveDiagFirstDevice( hypre_CSRMatrix  *A );
+HYPRE_Int hypre_CSRMatrixMoveDiagFirstOrderedDevice( hypre_CSRMatrix *A );
 HYPRE_Int hypre_CSRMatrixCheckDiagFirstDevice( hypre_CSRMatrix  *A );
 HYPRE_Int hypre_CSRMatrixCheckForMissingDiagonal( hypre_CSRMatrix *A );
 HYPRE_Int hypre_CSRMatrixReplaceDiagDevice( hypre_CSRMatrix *A, HYPRE_Complex *new_diag,

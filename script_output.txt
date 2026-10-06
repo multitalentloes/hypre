@@ -1,0 +1,2193 @@
+$ bash build_and_test.sh --cmake
+========================================
+   Build and Test Script Summary
+========================================
+Steps to be executed:
+  1. Apply astyle formatting (src/)
+  2. Run MUP checks (src/)
+  3. Run cmake with flag (build/)
+  4. Run make -j 16 (build/)
+  5. Run tests (testilu.sh)
+========================================
+
+-------- [1/6] Applying astyle... --------
+Please make sure changes are committed
+-------- Astyle done --------
+
+-------- [2/6] Running MUP checks... --------
+Dist-Cleaning blas ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/blas'
+rm -rf *.o
+rm -f *.o_flt *.o_dbl *.o_ldbl
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/blas'
+Dist-Cleaning lapack ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/lapack'
+rm -rf *.o
+rm -f *.o_flt *.o_dbl *.o_ldbl
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/lapack'
+Dist-Cleaning utilities ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/utilities'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/utilities'
+Dist-Cleaning multivector ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/multivector'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/multivector'
+Dist-Cleaning krylov ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/krylov'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/krylov'
+Dist-Cleaning seq_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/seq_mv'
+rm -f csr_spgemm_device_numer[1-9].c
+rm -f csr_spgemm_device_numer10.c
+rm -f csr_spgemm_device_symbl[1-9].c
+rm -f csr_spgemm_device_symbl10.c
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/seq_mv'
+Dist-Cleaning seq_block_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/seq_block_mv'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/seq_block_mv'
+Dist-Cleaning parcsr_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_mv'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -f driver driver_matvec driver_matmul
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_mv'
+Dist-Cleaning parcsr_block_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_block_mv'
+rm -rf *.o libHYPRE_*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f driver driver_matvec driver_matmul
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_block_mv'
+Dist-Cleaning distributed_matrix ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_matrix'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_matrix'
+Dist-Cleaning IJ_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/IJ_mv'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/IJ_mv'
+Dist-Cleaning matrix_matrix ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/matrix_matrix'
+rm -f *.o lib*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/matrix_matrix'
+Dist-Cleaning parcsr_ls ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_ls'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/parcsr_ls'
+Dist-Cleaning struct_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/struct_mv'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl *.o_def
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl *.obj_def
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/struct_mv'
+Dist-Cleaning struct_ls ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/struct_ls'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/struct_ls'
+Dist-Cleaning sstruct_mv ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/sstruct_mv'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/sstruct_mv'
+Dist-Cleaning sstruct_ls ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/sstruct_ls'
+rm -f *.o *.obj libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -f *.obj_flt *.obj_dbl *.obj_ldbl
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/sstruct_ls'
+Dist-Cleaning /home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls'
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/pilut'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/pilut'
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/ParaSails'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/ParaSails'
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/Euclid'
+rm -f *.o libHYPRE*
+rm -f *.o_flt *.o_dbl *.o_ldbl
+rm -rf pchdir tca.map *inslog*
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls/Euclid'
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls'
+Dist-Cleaning lib ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/lib'
+rm -f *.o libHYPRE*
+rm -rf pchdir tca.map *inslog*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/lib'
+Dist-Cleaning docs ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs'
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs/usr-manual'
+rm -rf _build/*
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs/usr-manual'
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs/ref-manual'
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs/ref-manual'
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/docs'
+Dist-Cleaning test ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/test'
+rm -f *.o *.obj *.csv
+rm -rf pchdir tca.map *inslog*
+rm -f ij ij_assembly sstruct sstructmat struct structmat ams_driver struct_migrate ij_mm zboxloop
+rm -f ex1_for ex3_for ex5_for ex6_for ex7_for
+rm -f f77_ij f77_struct
+rm -f cxx_ij cxx_sstruct cxx_struct cxx_*
+rm -f test_csr_overlap
+rm -f TEST_examples/*.out*
+rm -f TEST_examples/*.err*
+rm -f TEST_ij/*.out*
+rm -f TEST_ij/*.err*
+rm -f TEST_ij/*.txt*
+rm -f TEST_ij/vectors.*
+rm -f TEST_sstruct/*.out*
+rm -f TEST_sstruct/*.err*
+rm -f TEST_struct/*.out*
+rm -f TEST_struct/*.err*
+rm -f TEST_structmat/*.out*
+rm -f TEST_structmat/*.err*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/test'
+Dist-Cleaning examples ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples'
+rm -f ex1.o ex2.o ex3.o ex4.o ex5.o ex5f.o ex6.o ex7.o ex8.o ex9.o ex11.o ex12.o ex12f.o ex13.o ex14.o ex15.o ex16.o
+rm -f ex5big.o ex15big.o
+rm -f ex5f.o ex12f.o
+rm -f ex17.o ex18.o
+rm -f ex18comp.o
+rm -f cudaf.o cudaf.mod ex*.o
+cd vis; make clean
+make[2]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples/vis'
+rm -f *mesh* *sol* *data*
+make[2]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples/vis'
+rm -f ex1 ex2 ex3 ex4 ex5 ex5f ex6 ex7 ex8 ex9 ex11 ex12 ex12f ex13 ex14 ex15 ex16 ex1*~ ex2*~ ex3*~ ex4*~ ex5*~ ex5f*~ ex6*~ ex7*~ ex8*~ ex9*~ ex11*~ ex12*~ ex12f*~ ex13*~ ex14*~ ex15*~ ex16*~
+rm -f ex5big ex15big ex5big*~ ex15big*~
+rm -f  ex5f*~ ex12f*~
+rm -f ex17 ex18 ex17*~ ex18*~
+rm -f ex18comp ex18comp*~
+rm -fr README*
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples'
+Dist-Cleaning examples/docs ...
+make[1]: Entering directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples/docs'
+rm -f *.html
+rm -f *~
+rm -rf ../*.html ../README_files
+make[1]: Leaving directory '/home/tobias/SINTEF/hypre-sep/hypre/src/examples/docs'
+rm -rf tca.map pchdir *inslog*
+rm -rf ./config/Makefile.config
+rm -rf ./TAGS
+rm -rf ./autom4te.cache
+rm -rf ./config.log
+rm -rf ./config.status
+rm -rf ./HYPRE_config.h
+configure: NOTE: On branch experiment, not the main development branch
+checking build system type... x86_64-pc-linux-gnu
+checking host system type... x86_64-pc-linux-gnu
+checking for mpxlc... no
+checking for mpixlc... no
+checking for mpiicx... no
+checking for mpiicc... no
+checking for mpigcc... no
+checking for mpipgcc... no
+checking for mpipgicc... no
+checking for mpicc... mpicc
+checking for CC... no
+checking for mpxlC... no
+checking for mpixlcxx... no
+checking for mpixlC... no
+checking for mpiicpx... no
+checking for mpiicpc... no
+checking for mpig++... no
+checking for mpic++... mpic++
+checking for mpxlf... no
+checking for mpixlf77... no
+checking for mpiifx... no
+checking for mpiifort... no
+checking for mpif77... mpif77
+checking whether make sets $(MAKE)... yes
+checking for ranlib... ranlib
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether the compiler supports GNU C... yes
+checking whether mpicc accepts -g... yes
+checking for mpicc option to enable C11 features... none needed
+checking whether the compiler supports GNU C++... yes
+checking whether mpic++ accepts -g... yes
+checking for mpic++ option to enable C++11 features... none needed
+checking whether the compiler supports GNU Fortran... yes
+checking whether mpif77 accepts -g... yes
+checking how to get verbose linking output from mpif77... -v
+checking for Fortran libraries of mpif77...  -L/usr/lib/x86_64-linux-gnu/openmpi/lib/fortran/gfortran -L/usr/lib/gcc/x86_64-linux-gnu/11 -L/usr/lib/gcc/x86_64-linux-gnu/11/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/11/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/11/../../.. -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopen-rte -lopen-pal -lhwloc -levent_core -levent_pthreads -lgfortran -lm -lz -lquadmath
+checking for dummy main to link with Fortran libraries... none
+checking for Fortran name-mangling scheme... lower case, underscore, no extra underscore
+checking for MPI_Init... yes
+checking for mpi.h... yes
+checking for MPI_Comm_f2c... yes
+checking how to run the C preprocessor... mpicc -E
+checking for grep that handles long lines and -e... /usr/bin/grep
+checking for egrep... /usr/bin/grep -E
+checking whether MPI_Comm_f2c is a macro... no
+checking for cabs in -lm... yes
+checking the hostname... tobias-PC
+checking the architecture... LINUX
+configure: creating ./config.status
+config.status: creating config/Makefile.config
+config.status: creating HYPRE_config.h
+Making blas ...
+
+Making lapack ...
+
+Making utilities ...
+Building libHYPRE_utilities.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making multivector ...
+Building libHYPRE_multivector.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making krylov ...
+Building libHYPRE_krylov.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making seq_mv ...
+Building libHYPRE_seq_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making seq_block_mv ...
+Building libHYPRE_seq_block_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making parcsr_mv ...
+Building libHYPRE_parcsr_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making parcsr_block_mv ...
+Building libHYPRE_parcsr_block_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making distributed_matrix ...
+Building libHYPRE_DistributedMatrix.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making IJ_mv ...
+Building libHYPRE_IJ_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making matrix_matrix ...
+Building libHYPRE_MatrixMatrix.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making parcsr_ls ...
+Building libHYPRE_parcsr_ls.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making struct_mv ...
+Building libHYPRE_struct_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making struct_ls ...
+Building libHYPRE_struct_ls.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making sstruct_mv ...
+Building libHYPRE_sstruct_mv.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making sstruct_ls ...
+Building libHYPRE_sstruct_ls.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making /home/tobias/SINTEF/hypre-sep/hypre/src/distributed_ls ...
+Making pilut ...
+Building libHYPRE_DistributedMatrixPilutSolver.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+Making ParaSails ...
+Building libHYPRE_ParaSails.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+Making Euclid ...
+Building libHYPRE_Euclid.a ... 
+ar: `u' modifier ignored since `D' is the default (see `U')
+
+Making lib ...
+Building libHYPRE ... 
+
+********************
+*  FUNCTION CHECK  *
+********************
+
+Checking IJ_mv ... OK
+Checking blas ... OK
+Checking distributed_ls/Euclid ... OK
+Checking distributed_ls/ParaSails ... OK
+Checking distributed_ls/pilut ... OK
+Checking distributed_matrix ... OK
+Checking krylov ... OK
+Checking lapack ... OK
+Checking matrix_matrix ... OK
+Checking multivector ... OK
+Checking parcsr_block_mv ... OK
+Checking parcsr_ls ... OK
+Checking parcsr_mv ... OK
+Checking seq_block_mv ... OK
+Checking seq_mv ... OK
+Checking sstruct_ls ... OK
+Checking sstruct_mv ... OK
+Checking struct_ls ... OK
+Checking struct_mv ... OK
+Checking utilities ... OK
+-------- MUP done --------
+
+-------- [3/6] Running cmake... --------
+CMake Warning:
+  Ignoring extra path from command line:
+
+   "."
+
+
+-- CMake Executable: /usr/local/bin/cmake
+-- CMake Version: 3.27.4
+-- Hypre Version: v3.1.0-13-g8cc175b6e (experiment)
+-- The C compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/local/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Build type: Release
+-- Shared library: OFF
+-- Installation directory: /home/tobias/SINTEF/hypre-sep/hypre/src/hypre
+-- Using C standard: 99
+-- Found MPI_C: /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so (found version "3.1") 
+-- Found MPI: TRUE (found version "3.1")  
+-- Adding MPI include directory: /usr/lib/x86_64-linux-gnu/openmpi/include;/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+-- MPI execution command: /usr/bin/mpiexec
+-- Performing Test HYPRE_HAVE_MPI_COMM_F2C
+-- Performing Test HYPRE_HAVE_MPI_COMM_F2C - Success
+-- Link-Time Optimization (LTO) disabled
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/local/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- C++ standard library configuration completed for GNU
+-- Enabling support for CXX.
+-- Using CXX standard: C++17
+-- Enabling HIP toolkit
+-- Using ROCm installation: /opt/rocm
+-- The HIP compiler identification is Clang 19.0.0
+-- Detecting HIP compiler ABI info
+-- Detecting HIP compiler ABI info - done
+-- Check for working HIP compiler: /opt/rocm/llvm/bin/clang++ - skipped
+-- Detecting HIP compile features
+-- Detecting HIP compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- CMAKE_HIP_ARCHITECTURES is explicitly set to: gfx1100
+-- Processing CMAKE_HIP_ARCHITECTURES entry: gfx1100 -> Numeric base: 1100
+-- HYPRE_WARP_SIZE set to 32 for architectures: gfx1100
+-- Found target: roc::rocblas
+-- Found target: roc::rocsparse
+-- Found target: roc::rocrand
+-- Found target: roc::rocsolver
+-- Found target: roc::rocthrust
+-- Using rocThrust include dirs: /opt/rocm-6.4.1/include/;/opt/rocm-6.4.1/include
+-- Found target: roc::rocprim
+-- Using rocPRIM include dirs: /opt/rocm-6.4.1/include
+-- Linking to ROCm libraries: roc::rocblas;roc::rocsparse;roc::rocrand;roc::rocsolver
+-- HIP version: 6.4.43483
+-- HIP C++ standard: 17
+-- HIP architectures: gfx1100
+-- HIP common flags: 
+-- Populating umpire
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-subbuild
+[ 11%] Creating directories for 'umpire-populate'
+[ 22%] Performing download step (git clone) for 'umpire-populate'
+Cloning into 'umpire-src'...
+remote: Enumerating objects: 12257, done.        
+remote: Counting objects: 100% (12257/12257), done.        
+remote: Compressing objects: 100% (5757/5757), done.        
+remote: Total 12257 (delta 9436), reused 8458 (delta 6342), pack-reused 0 (from 0)        
+Receiving objects: 100% (12257/12257), 8.87 MiB | 22.21 MiB/s, done.
+Resolving deltas: 100% (9436/9436), done.
+HEAD is now at 0372fbd Preparing for 2025.12.0 release (#1032)
+Submodule 'blt' (https://github.com/LLNL/blt.git) registered for path 'blt'
+Submodule 'src/tpl/umpire/camp' (https://github.com/LLNL/camp.git) registered for path 'src/tpl/umpire/camp'
+Submodule 'src/tpl/umpire/fmt' (https://github.com/fmtlib/fmt) registered for path 'src/tpl/umpire/fmt'
+Cloning into '/home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/blt'...
+Cloning into '/home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/src/tpl/umpire/camp'...
+Cloning into '/home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/src/tpl/umpire/fmt'...
+Submodule path 'blt': checked out 'e346c776b27493aa058fac5c7afc9a09bb6014bd'
+Submodule path 'src/tpl/umpire/camp': checked out 'a8caefa9f4c811b1a114b4ed2c9b681d40f12325'
+Submodule 'extern/blt' (https://github.com/llnl/blt) registered for path 'src/tpl/umpire/camp/extern/blt'
+Cloning into '/home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/src/tpl/umpire/camp/extern/blt'...
+Submodule path 'src/tpl/umpire/camp/extern/blt': checked out 'e783e30f2823ee1a208f7f90741b41c1f5a08063'
+Submodule path 'src/tpl/umpire/fmt': checked out 'e69e5f977d458f2650bb346dadf2ad30c5320281'
+[ 33%] Performing update step for 'umpire-populate'
+[ 44%] No patch step for 'umpire-populate'
+[ 55%] No configure step for 'umpire-populate'
+[ 66%] No build step for 'umpire-populate'
+[ 77%] No install step for 'umpire-populate'
+[ 88%] No test step for 'umpire-populate'
+[100%] Completed 'umpire-populate'
+[100%] Built target umpire-populate
+-- Sanitized Umpire config.hpp.in version placeholders: 2025.12.0
+CMake Deprecation Warning at /home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/CMakeLists.txt:13 (cmake_policy):
+  The OLD behavior for policy CMP0096 will be removed from a future version
+  of CMake.
+
+  The cmake-policies(7) manual explains that the OLD behaviors of all
+  policies are deprecated and that a policy should be set to OLD only under
+  specific short-term circumstances.  Projects should be ported to the NEW
+  behavior and not rely on setting a policy to OLD.
+
+
+-- Using CMake version 3.27.4
+-- BLT Source Directory: /home/tobias/SINTEF/hypre-sep/hypre/build/_deps/umpire-src/blt
+-- BLT Version: 0.7.1
+-- CMake Version: 3.27.4
+-- CMake Build Type: Release
+-- CMake Executable: /usr/local/bin/cmake
+-- Setting CMAKE_CXX_EXTENSIONS to OFF
+-- Standard C++17 selected
+-- Standard C++17 selected for HIP
+-- BLT MPI support is OFF
+-- BLT OpenMP support is OFF
+-- BLT CUDA support is OFF
+-- BLT HIP support is ON
+-- Creating BLT HIP targets...
+-- ROCM path:        /opt/rocm
+-- HIP version:      6.4.43483
+-- Found Git: /usr/bin/git (found version "2.34.1") 
+-- Git Support is ON
+-- Git Executable: /usr/bin/git
+-- Git Version: 2.34.1
+-- Found Doxygen: /usr/bin/doxygen (found version "1.9.1") found components: doxygen dot 
+-- Sphinx support is ON
+-- Failed to locate Sphinx executable (missing: SPHINX_EXECUTABLE) 
+-- Valgrind support is ON
+-- Found Valgrind: /usr/bin/valgrind  
+-- AStyle support is ON
+-- Found AStyle: /usr/bin/astyle  
+-- ClangFormat support is ON
+-- Found ClangFormat: /home/tobias/.local/bin/clang-format  
+-- Uncrustify support is ON
+-- Failed to locate Uncrustify executable (missing: UNCRUSTIFY_EXECUTABLE) 
+-- Yapf support is ON
+-- Failed to locate Yapf executable (missing: YAPF_EXECUTABLE) 
+-- CMakeFormat support is ON
+-- Failed to locate CMakeFormat executable (missing: CMAKEFORMAT_EXECUTABLE) 
+-- Cppcheck support is ON
+-- Failed to locate Cppcheck executable (missing: CPPCHECK_EXECUTABLE) 
+-- ClangQuery support is ON
+-- Found ClangQuery: /home/tobias/Downloads/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang-query  
+-- ClangTidy support is ON
+-- Found ClangTidy: /home/tobias/Downloads/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang-tidy  
+-- ClangApplyReplacements support is ON
+-- Found ClangApplyReplacements: /home/tobias/Downloads/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang-apply-replacements  
+-- C Compiler family is GNU
+-- Adding optional BLT definitions and compiler flags
+-- Enabling all compiler warnings on all targets.
+-- Fortran support disabled.
+-- CMAKE_C_FLAGS flags are:   -Wall -Wextra  
+-- CMAKE_CXX_FLAGS flags are:   -Wall -Wextra     
+-- CMAKE_EXE_LINKER_FLAGS flags are:  
+-- CMake's C implicit link directories: /usr/lib/gcc/x86_64-linux-gnu/11;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib
+-- CMake's CXX implicit link directories: /usr/lib/gcc/x86_64-linux-gnu/11;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib
+-- CMake's C implicit link libraries: gcc;gcc_s;c;gcc;gcc_s
+-- CMake's CXX implicit link libraries: stdc++;m;gcc_s;gcc;c;gcc_s;gcc
+-- Checking for std::filesystem
+-- std::filesystem found
+-- HIP memory coherence granularity: Enabled
+-- Version: 10.2.1
+-- Build type: Release
+-- IPC Shared Memory Disabled
+-- MPI3 Shared Memory Disabled
+-- Umpire will be built from sources (tag: v2025.12.0) and installed into: /home/tobias/SINTEF/hypre-sep/hypre/src/hypre
+-- Found existing Umpire target: umpire::umpire
+-- Enabled support for using UMPIRE
+-- Performing Test UMPIRE_HAS_C_INTERFACE
+-- Performing Test UMPIRE_HAS_C_INTERFACE - Success
+-- Verified Umpire C interface headers are available.
+-- Using internal BLAS
+-- Using internal LAPACK
+-- Building tests with CTest support
+-- Skipping build-tree export of HYPRETargets due to auto-built Umpire dependency
+-- 
+-- HYPRE Configuration Summary:
+-- 
+--  Base Options:
+--  +-------------------------------------+---------+
+--  | Option                              | Status  |
+--  +-------------------------------------+---------+
+--  | HYPRE_ENABLE_BIGINT                 | OFF     |
+--  | HYPRE_ENABLE_MIXEDINT               | OFF     |
+--  | HYPRE_ENABLE_SINGLE                 | OFF     |
+--  | HYPRE_ENABLE_LONG_DOUBLE            | OFF     |
+--  | HYPRE_ENABLE_COMPLEX                | OFF     |
+--  | HYPRE_ENABLE_MIXED_PRECISION        | OFF     |
+--  | HYPRE_ENABLE_FORTRAN                | OFF     |
+--  | HYPRE_ENABLE_HYPRE_BLAS             | ON      |
+--  | HYPRE_ENABLE_HYPRE_LAPACK           | ON      |
+--  | HYPRE_ENABLE_PERSISTENT_COMM        | OFF     |
+--  | HYPRE_ENABLE_FEI                    | OFF     |
+--  | HYPRE_ENABLE_HOPSCOTCH              | OFF     |
+--  | HYPRE_ENABLE_OPENMP                 | OFF     |
+--  | HYPRE_ENABLE_MPI                    | ON      |
+--  | HYPRE_ENABLE_LTO                    | OFF     |
+--  | HYPRE_ENABLE_PRINT_ERRORS           | OFF     |
+--  | HYPRE_ENABLE_FPE_TRAP               | OFF     |
+--  | HYPRE_ENABLE_TEST_USING_HOST        | OFF     |
+--  | HYPRE_ENABLE_HOST_MEMORY            | OFF     |
+--  | HYPRE_BUILD_EXAMPLES                | OFF     |
+--  | HYPRE_BUILD_TESTS                   | ON      |
+--  +-------------------------------------+---------+
+-- 
+--  GPU Options:
+--  +-------------------------------------+---------+
+--  | Option                              | Status  |
+--  +-------------------------------------+---------+
+--  | HYPRE_ENABLE_CUDA                   | OFF     |
+--  | HYPRE_ENABLE_HIP                    | ON      |
+--  | HYPRE_ENABLE_SYCL                   | OFF     |
+--  | HYPRE_ENABLE_GPU_AWARE_MPI          | OFF     |
+--  | HYPRE_ENABLE_UNIFIED_MEMORY         | OFF     |
+--  | HYPRE_ENABLE_DEVICE_MALLOC_ASYNC    | OFF     |
+--  | HYPRE_ENABLE_THRUST_NOSYNC          | ON      |
+--  | HYPRE_ENABLE_GPU_PROFILING          | OFF     |
+--  | HYPRE_ENABLE_ROCSPARSE              | ON      |
+--  | HYPRE_ENABLE_ROCSOLVER              | ON      |
+--  | HYPRE_ENABLE_ROCBLAS                | ON      |
+--  | HYPRE_ENABLE_ROCRAND                | ON      |
+--  | HYPRE_ENABLE_ROCTHRUST              | ON      |
+--  | HYPRE_ENABLE_ROCPRIM                | ON      |
+--  +-------------------------------------+---------+
+-- 
+--  Third-Party Library Options:
+--  +-------------------------------------+---------+
+--  | Option                              | Status  |
+--  +-------------------------------------+---------+
+--  | HYPRE_BUILD_UMPIRE                  | ON      |
+--  | HYPRE_ENABLE_UMPIRE                 | ON      |
+--  | HYPRE_ENABLE_UMPIRE_HOST            | ON      |
+--  | HYPRE_ENABLE_UMPIRE_PINNED          | OFF     |
+--  | HYPRE_ENABLE_UMPIRE_DEVICE          | ON      |
+--  | HYPRE_ENABLE_UMPIRE_UM              | OFF     |
+--  | HYPRE_ENABLE_SUPERLU                | OFF     |
+--  | HYPRE_ENABLE_DSUPERLU               | OFF     |
+--  | HYPRE_ENABLE_MAGMA                  | OFF     |
+--  | HYPRE_ENABLE_CALIPER                | OFF     |
+--  +-------------------------------------+---------+
+-- 
+-- Configuring done (8.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/tobias/SINTEF/hypre-sep/hypre/build
+-------- cmake done --------
+
+-------- [4/6] Running make... --------
+[  0%] Building CXX object _deps/umpire-build/src/tpl/umpire/camp/CMakeFiles/camp.dir/src/errors.cpp.o
+[  0%] Building CXX object _deps/umpire-build/src/umpire/interface/c_fortran/CMakeFiles/umpire_interface.dir/utilUmpire.cpp.o
+[  0%] Building CXX object _deps/umpire-build/src/umpire/interface/c_fortran/CMakeFiles/umpire_interface.dir/wrapAllocator.cpp.o
+[  0%] Building C object _deps/umpire-build/src/tpl/umpire/judy/CMakeFiles/umpire_tpl_judy.dir/judy.c.o
+[  0%] Building CXX object _deps/umpire-build/src/umpire/interface/c_fortran/CMakeFiles/umpire_interface.dir/wrapResourceManager.cpp.o
+[  0%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/AllocationMap.cpp.o
+[  0%] Building CXX object _deps/umpire-build/src/umpire/interface/c_fortran/CMakeFiles/umpire_interface.dir/wrapUmpire.cpp.o
+[  0%] Built target umpire_tpl_json
+[  0%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/FixedMallocPool.cpp.o
+[  1%] Built target umpire_alloc
+[  1%] Built target umpire_tpl_CLI11
+[  1%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HostResourceFactory.cpp.o
+[  1%] Building CXX object _deps/umpire-build/src/umpire/event/CMakeFiles/umpire_event.dir/event_store_recorder.cpp.o
+[  1%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/GenericReallocateOperation.cpp.o
+[  1%] Building CXX object _deps/umpire-build/src/tpl/umpire/fmt/CMakeFiles/fmt.dir/src/format.cc.o
+[  2%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/AlignedAllocator.cpp.o
+[  3%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/io.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/AllocationAdvisor.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/event/CMakeFiles/umpire_event.dir/json_file_store.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/AllocationPrefetcher.cpp.o
+[  4%] Built target umpire_tpl_judy
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/AllocationStrategy.cpp.o
+[  4%] Linking CXX static library ../../../../lib/libcamp.a
+[  4%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/MemoryResource.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/MemoryResourceRegistry.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/tpl/umpire/fmt/CMakeFiles/fmt.dir/src/os.cc.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/DynamicPoolList.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HostCopyOperation.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/event/CMakeFiles/umpire_event.dir/recorder_factory.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/NullMemoryResource.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/event/CMakeFiles/umpire_event.dir/quest_database.cpp.o
+[  4%] Built target umpire_interface
+[  4%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HostMemsetOperation.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/Logger.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/FixedPool.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/MPI.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HostReallocateOperation.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/MixedPool.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/MemoryOperation.cpp.o
+[  4%] Linking CXX static library ../../../../lib/libfmt.a
+[  4%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/OutputBuffer.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/MemoryOperationRegistry.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/allocation_statistics.cpp.o
+[  4%] Building CXX object _deps/umpire-build/src/umpire/util/CMakeFiles/umpire_util.dir/detect_vendor.cpp.o
+[  5%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/mixins/AlignedAllocation.cpp.o
+[  5%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/NullMemoryResourceFactory.cpp.o
+[  5%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/mixins/AllocateNull.cpp.o
+[  5%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HipAdviseOperation.cpp.o
+[  5%] Built target umpire_event
+[  6%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/FileMemoryResource.cpp.o
+[  6%] Built target camp
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/FileMemoryResourceFactory.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HipCopyOperation.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/op/CMakeFiles/umpire_op.dir/HipMemsetOperation.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipDeviceMemoryResource.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipDeviceResourceFactory.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/mixins/Inspector.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipUnifiedMemoryResource.cpp.o
+[  7%] Built target umpire_util
+[  7%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/MonotonicAllocationStrategy.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipUnifiedMemoryResourceFactory.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/NamedAllocationStrategy.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipPinnedMemoryResourceFactory.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/resource/CMakeFiles/umpire_resource.dir/HipPinnedMemoryResource.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/NamingShim.cpp.o
+[  7%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/QuickPool.cpp.o
+[  8%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/ResourceAwarePool.cpp.o
+[  8%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/SizeLimiter.cpp.o
+[  8%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/SlotPool.cpp.o
+[  8%] Built target umpire_op
+[  8%] Built target fmt
+[  8%] Building CXX object _deps/umpire-build/src/umpire/strategy/CMakeFiles/umpire_strategy.dir/ThreadSafeAllocator.cpp.o
+[  8%] Built target umpire_resource
+[  8%] Built target umpire_strategy
+[  8%] Building CXX object _deps/umpire-build/src/umpire/CMakeFiles/umpire.dir/Allocator.cpp.o
+[  8%] Building CXX object _deps/umpire-build/src/umpire/CMakeFiles/umpire.dir/ResourceManager.cpp.o
+[  8%] Building CXX object _deps/umpire-build/src/umpire/CMakeFiles/umpire.dir/Umpire.cpp.o
+[  8%] Linking CXX static library ../../lib/libumpire.a
+[  8%] Built target umpire
+[  8%] Building C object CMakeFiles/HYPRE.dir/blas/daxpy.c.o
+[  8%] Building C object CMakeFiles/HYPRE.dir/blas/ddot.c.o
+[  8%] Building C object CMakeFiles/HYPRE.dir/blas/dasum.c.o
+[  8%] Building C object CMakeFiles/HYPRE.dir/blas/dcopy.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dgemm.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dger.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dnrm2.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dgemv.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dscal.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dswap.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dsymm.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/drot.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dsymv.c.o
+[  9%] Building C object CMakeFiles/HYPRE.dir/blas/dsyr2.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dsyr2k.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dsyrk.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dtrmm.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dtrmv.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/f2c.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dtrsv.c.o
+[ 10%] Building C object CMakeFiles/HYPRE.dir/blas/dtrsm.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/blas/idamax.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/blas/lsame.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/blas/xerbla.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/lapack/dbdsqr.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/lapack/dgebrd.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/lapack/dgebd2.c.o
+[ 11%] Building C object CMakeFiles/HYPRE.dir/lapack/dgelq2.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgels.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgelqf.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgeqr2.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgeqrf.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgetrf.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgesvd.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgetri.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dgetrs.c.o
+[ 12%] Building C object CMakeFiles/HYPRE.dir/lapack/dlabad.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dgetf2.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlabrd.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlacpy.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlae2.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlaev2.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlamch.c.o
+[ 13%] Building C object CMakeFiles/HYPRE.dir/lapack/dlanst.c.o
+[ 14%] Building C object CMakeFiles/HYPRE.dir/lapack/dlange.c.o
+[ 14%] Building C object CMakeFiles/HYPRE.dir/lapack/dlansy.c.o
+[ 14%] Building C object CMakeFiles/HYPRE.dir/lapack/dlapy2.c.o
+[ 14%] Building C object CMakeFiles/HYPRE.dir/lapack/dlarfb.c.o
+[ 14%] Building C object CMakeFiles/HYPRE.dir/lapack/dlarf.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlarfg.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlarft.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlartg.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlas2.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlascl.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq1.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlaset.c.o
+[ 15%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq2.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq3.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq4.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq5.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasq6.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasr.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasrt.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlassq.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dorg2l.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dlaswp.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dorg2r.c.o
+[ 16%] Building C object CMakeFiles/HYPRE.dir/lapack/dorgbr.c.o
+[ 17%] Building C object CMakeFiles/HYPRE.dir/lapack/dlatrd.c.o
+[ 17%] Building C object CMakeFiles/HYPRE.dir/lapack/dlasv2.c.o
+[ 17%] Building C object CMakeFiles/HYPRE.dir/lapack/dorgl2.c.o
+[ 17%] Building C object CMakeFiles/HYPRE.dir/lapack/dorglq.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dorgql.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dorgqr.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dorm2r.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dorgtr.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dormbr.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dorml2.c.o
+[ 18%] Building C object CMakeFiles/HYPRE.dir/lapack/dormlq.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dormqr.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dpotrf.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dsteqr.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dpotf2.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dpotrs.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dsterf.c.o
+[ 19%] Building C object CMakeFiles/HYPRE.dir/lapack/dsyev.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dsygs2.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dsygst.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dsygv.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dsytd2.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dsytrd.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dtrti2.c.o
+[ 20%] Building C object CMakeFiles/HYPRE.dir/lapack/dtrtri.c.o
+[ 21%] Building C object CMakeFiles/HYPRE.dir/lapack/ieeeck.c.o
+[ 21%] Building C object CMakeFiles/HYPRE.dir/lapack/ilaenv.c.o
+[ 21%] Building C object CMakeFiles/HYPRE.dir/lapack/lsame.c.o
+[ 21%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec.c.o
+[ 21%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_icc.c.o
+[ 21%] Building C object CMakeFiles/HYPRE.dir/lapack/xerbla.c.o
+[ 21%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_ivcc.c.o
+[ 21%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_ivc.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_vc.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_cc.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matvec_vcc.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_core.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse.c.o
+[ 22%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_fff.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_ffc.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_fcc.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_ff.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_fc.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_cc.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_f.c.o
+[ 23%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matmult_fuse_c.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/assumed_part.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/box_algebra.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/box_boundary.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/box.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/box_ds.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/box_manager.c.o
+[ 24%] Building C object CMakeFiles/HYPRE.dir/struct_mv/coarsen.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/communication_info.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/computation.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/F90_HYPRE_struct_grid.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/F90_HYPRE_struct_matrix.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/F90_HYPRE_struct_stencil.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/F90_HYPRE_struct_vector.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/HYPRE_struct_grid.c.o
+[ 25%] Building C object CMakeFiles/HYPRE.dir/struct_mv/HYPRE_struct_matrix.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/HYPRE_struct_stencil.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/HYPRE_struct_vector.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/project.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/struct_grid.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/struct_io.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/struct_matrix_mask.c.o
+[ 26%] Building C object CMakeFiles/HYPRE.dir/struct_mv/struct_stencil.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_axpy.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_communication.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_copy.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_data.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_innerprod.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matrix.c.o
+[ 27%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_matop.c.o
+[ 28%] Building C object CMakeFiles/HYPRE.dir/struct_mv/struct_stmatrix.c.o
+[ 28%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_scale.c.o
+[ 28%] Building HIP object CMakeFiles/HYPRE.dir/struct_mv/struct_vector.c.o
+[ 28%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/cyclic_reduction.c.o
+[ 28%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/diag_scale.c.o
+[ 28%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_bicgstab.c.o
+[ 28%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_cycred.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_flexgmres.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_lgmres.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_gmres.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_hybrid.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_int.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_jacobi.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_pfmg.c.o
+[ 29%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_pcg.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/F90_HYPRE_struct_smg.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_bicgstab.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/hybrid.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_cycred.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_flexgmres.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_gmres.c.o
+[ 30%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_hybrid.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_lgmres.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_jacobi.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_smg.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_pfmg.c.o
+[ 31%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/jacobi.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/pcg_struct.c.o
+[ 31%] Building C object CMakeFiles/HYPRE.dir/struct_ls/pfmg.c.o
+[ 32%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_cxyz_cc.c.o
+[ 32%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_cxyz_vc.c.o
+[ 32%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_coarsen.c.o
+[ 32%] Building C object CMakeFiles/HYPRE.dir/struct_ls/pfmg_relax.c.o
+[ 32%] Building C object CMakeFiles/HYPRE.dir/struct_ls/pfmg_setup_rap.c.o
+[ 32%] Building C object CMakeFiles/HYPRE.dir/struct_ls/pfmg_solve.c.o
+[ 32%] Building C object CMakeFiles/HYPRE.dir/struct_ls/semi.c.o
+[ 34%] Building C object CMakeFiles/HYPRE.dir/struct_ls/smg_relax.c.o
+[ 34%] Building C object CMakeFiles/HYPRE.dir/struct_ls/smg_setup.c.o
+[ 34%] Building C object CMakeFiles/HYPRE.dir/struct_ls/smg_setup_restrict.c.o
+[ 34%] Building C object CMakeFiles/HYPRE.dir/struct_ls/smg_setup_rap.c.o
+[ 34%] Building C object CMakeFiles/HYPRE.dir/struct_ls/smg_solve.c.o
+[ 34%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_int.c.o
+[ 34%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/HYPRE_struct_pcg.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg2_setup_rap.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg3_setup_rap.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_setup.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_setup_interp.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_setup_rap5.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/pfmg_setup_rap7.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/red_black_constantcoef_gs.c.o
+[ 35%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/red_black_gs.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/semi_interp.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/semi_restrict.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/semi_setup_rap.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg2_setup_rap.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg3_setup_rap.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg.c.o
+[ 36%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg_axpy.c.o
+[ 37%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg_residual.c.o
+[ 37%] Building HIP object CMakeFiles/HYPRE.dir/struct_ls/smg_setup_interp.c.o
+[ 37%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/F90_HYPRE_sstruct_graph.c.o
+[ 37%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/F90_HYPRE_sstruct_grid.c.o
+[ 37%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/F90_HYPRE_sstruct_matrix.c.o
+[ 37%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/F90_HYPRE_sstruct_stencil.c.o
+[ 37%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/F90_HYPRE_sstruct_vector.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/HYPRE_sstruct_graph.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/HYPRE_sstruct_grid.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/HYPRE_sstruct_matrix.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/HYPRE_sstruct_stencil.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/HYPRE_sstruct_vector.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_axpy.c.o
+[ 38%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_copy.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_graph.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_grid.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_innerprod.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_matvec.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_matmult.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_matop.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_scale.c.o
+[ 39%] Building C object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_stencil.c.o
+[ 40%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_matrix.c.o
+[ 40%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_mv/sstruct_vector.c.o
+[ 40%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_bicgstab.c.o
+[ 40%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_gmres.c.o
+[ 40%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_flexgmres.c.o
+[ 40%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_lgmres.c.o
+[ 40%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_int.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_pcg.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_split.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_ssamg.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/F90_HYPRE_sstruct_sys_pfmg.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_gmres.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_bicgstab.c.o
+[ 41%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_flexgmres.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_lgmres.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_pcg.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_int.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_split.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_sys_pfmg.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/HYPRE_sstruct_ssamg.c.o
+[ 42%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/krylov.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/sys_pfmg.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/krylov_sstruct.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/sys_pfmg_setup.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/sys_pfmg_relax.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/sys_pfmg_solve.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/sys_pfmg_setup_interp.c.o
+[ 43%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_ls/node_relax.c.o
+[ 43%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg.c.o
+[ 44%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_csolver.c.o
+[ 44%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_interp.c.o
+[ 44%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_relax.c.o
+[ 44%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_setup.c.o
+[ 44%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_setup_rap.c.o
+[ 44%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_solve.c.o
+[ 44%] Building C object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_stats.c.o
+[ 45%] Building HIP object CMakeFiles/HYPRE.dir/sstruct_ls/ssamg_uinterp.c.o
+[ 45%] Building C object CMakeFiles/HYPRE.dir/utilities/base_solver.c.o
+[ 45%] Building C object CMakeFiles/HYPRE.dir/utilities/F90_HYPRE_error.c.o
+[ 45%] Building C object CMakeFiles/HYPRE.dir/utilities/F90_HYPRE_general.c.o
+[ 45%] Building HIP object CMakeFiles/HYPRE.dir/utilities/HYPRE_handle.c.o
+[ 45%] Building C object CMakeFiles/HYPRE.dir/utilities/HYPRE_version.c.o
+[ 45%] Building C object CMakeFiles/HYPRE.dir/utilities/amg_linklist.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/binsearch.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/exchange_data.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/fortran_matrix.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/ap.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/log.c.o
+[ 46%] Building C object CMakeFiles/HYPRE.dir/utilities/complex.c.o
+[ 46%] Building HIP object CMakeFiles/HYPRE.dir/utilities/device_markers.c.o
+[ 47%] Building HIP object CMakeFiles/HYPRE.dir/utilities/device_utils.c.o
+[ 47%] Building C object CMakeFiles/HYPRE.dir/utilities/error.c.o
+[ 47%] Building C object CMakeFiles/HYPRE.dir/utilities/int_array.c.o
+[ 47%] Building C object CMakeFiles/HYPRE.dir/utilities/hopscotch_hash.c.o
+[ 47%] Building C object CMakeFiles/HYPRE.dir/utilities/matrix_stats.c.o
+[ 47%] Building C object CMakeFiles/HYPRE.dir/utilities/magma.c.o
+[ 47%] Building HIP object CMakeFiles/HYPRE.dir/utilities/memory_tracker.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/merge_sort.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/mmio.c.o
+[ 48%] Building HIP object CMakeFiles/HYPRE.dir/utilities/omp_device.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/prefix_sum.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/qsort.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/unique.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/utilities.c.o
+[ 48%] Building C object CMakeFiles/HYPRE.dir/utilities/mpistubs.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/qsplit.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/random.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/state.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/threading.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/timer.c.o
+[ 49%] Building C object CMakeFiles/HYPRE.dir/utilities/timing.c.o
+[ 49%] Building HIP object CMakeFiles/HYPRE.dir/utilities/general.c.o
+[ 50%] Building HIP object CMakeFiles/HYPRE.dir/utilities/handle.c.o
+[ 50%] Building HIP object CMakeFiles/HYPRE.dir/utilities/int_array_device.c.o
+[ 50%] Building HIP object CMakeFiles/HYPRE.dir/utilities/memory.c.o
+[ 50%] Building HIP object CMakeFiles/HYPRE.dir/utilities/stl_ops.c.o
+[ 50%] Building C object CMakeFiles/HYPRE.dir/utilities/caliper_instrumentation.c.o
+[ 50%] Building C object CMakeFiles/HYPRE.dir/utilities/multiprecision.c.o
+[ 50%] Building C object CMakeFiles/HYPRE.dir/utilities/printf.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/multivector/multivector.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/multivector/temp_multivector.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/krylov/bicgstab.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/krylov/cgnr.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/krylov/cogmres.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/krylov/gmres.c.o
+[ 51%] Building C object CMakeFiles/HYPRE.dir/krylov/flexgmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/lgmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_bicgstab.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_cgnr.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_gmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_cogmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_lgmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_flexgmres.c.o
+[ 52%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_pcg.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/krylov/pcg.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/krylov/HYPRE_lobpcg.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/krylov/lobpcg.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/seq_mv/csr_filter.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/seq_mv/csr_matop.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/seq_mv/csr_matrix.c.o
+[ 53%] Building C object CMakeFiles/HYPRE.dir/seq_mv/csr_matvec.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/genpart.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/HYPRE_csr_matrix.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/HYPRE_mapped_matrix.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/HYPRE_multiblock_matrix.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/HYPRE_vector.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/mapped_matrix.c.o
+[ 54%] Building C object CMakeFiles/HYPRE.dir/seq_mv/multiblock_matrix.c.o
+[ 55%] Building C object CMakeFiles/HYPRE.dir/seq_mv/vector.c.o
+[ 55%] Building C object CMakeFiles/HYPRE.dir/seq_mv/vector_batched.c.o
+[ 55%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_matop_device.c.o
+[ 55%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_matrix_cuda_utils.c.o
+[ 55%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_matvec_device.c.o
+[ 55%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_matvec_oomp.c.o
+[ 55%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spadd_device.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_cusparse.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numblocks.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer1.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer2.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer3.c.o
+[ 56%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer4.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer5.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer6.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer7.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer8.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer9.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_numer10.c.o
+[ 57%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_onemklsparse.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_rocsparse.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_rowest.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl1.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl2.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl3.c.o
+[ 58%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl4.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl5.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl6.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl7.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl8.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl9.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_symbl10.c.o
+[ 59%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spgemm_device_util.c.o
+[ 60%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_spmv_device.c.o
+[ 60%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/csr_sptrans_device.c.o
+[ 60%] Building HIP object CMakeFiles/HYPRE.dir/seq_mv/vector_device.c.o
+[ 60%] Building C object CMakeFiles/HYPRE.dir/seq_block_mv/dense_block_matrix.c.o
+[ 60%] Building C object CMakeFiles/HYPRE.dir/seq_block_mv/dense_block_matmult.c.o
+[ 60%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/communicationT.c.o
+[ 60%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/F90_HYPRE_parcsr_matrix.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/F90_HYPRE_parcsr_vector.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/F90_parcsr_matrix.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/F90_par_vector.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/HYPRE_parcsr_matrix.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/HYPRE_parcsr_vector.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/gen_fffc.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/new_commpkg.c.o
+[ 61%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/numbers.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_aat.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_assumed_part.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_bool_matop.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_bool_matrix.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_communication.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_filter.c.o
+[ 62%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matop.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_overlap.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matrix.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matrix_stats.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matmat.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matvec.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matop_marked.c.o
+[ 63%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_triplemat.c.o
+[ 64%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_make_system.c.o
+[ 64%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_vector.c.o
+[ 64%] Building C object CMakeFiles/HYPRE.dir/parcsr_mv/par_vector_batched.c.o
+[ 64%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_fffc_device.c.o
+[ 64%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_filter_device.c.o
+[ 64%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matop_device.c.o
+[ 64%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matmat_device.c.o
+[ 65%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_matvec_device.c.o
+[ 65%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_csr_triplemat_device.c.o
+[ 65%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_mv/par_vector_device.c.o
+[ 65%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/csr_block_matrix.c.o
+[ 65%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/csr_block_matvec.c.o
+[ 65%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_matrix.c.o
+[ 65%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_matvec.c.o
+[ 65%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_comm.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_rap.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_rap_communication.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_interp.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_csr_block_relax.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/parcsr_block_mv/par_block_nodal_systems.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/distributed_matrix/distributed_matrix.c.o
+[ 67%] Building C object CMakeFiles/HYPRE.dir/distributed_matrix/distributed_matrix_ISIS.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/distributed_matrix/distributed_matrix_PETSc.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/distributed_matrix/distributed_matrix_parcsr.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/distributed_matrix/HYPRE_distributed_matrix.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/aux_parcsr_matrix.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/aux_par_vector.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/F90_HYPRE_IJMatrix.c.o
+[ 68%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/F90_HYPRE_IJVector.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/F90_IJMatrix.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/HYPRE_IJMatrix.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/HYPRE_IJVector.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/IJ_assumed_part.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/IJMatrix.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/IJMatrix_parcsr.c.o
+[ 69%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/IJVector.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/IJ_mv/IJVector_parcsr.c.o
+[ 70%] Building HIP object CMakeFiles/HYPRE.dir/IJ_mv/IJMatrix_parcsr_device.c.o
+[ 70%] Building HIP object CMakeFiles/HYPRE.dir/IJ_mv/IJVector_parcsr_device.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/matrix_matrix/HYPRE_ConvertParCSRMatrixToDistributedMatrix.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/matrix_matrix/HYPRE_ConvertPETScMatrixToDistributedMatrix.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/blas_dh.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Euclid_apply.c.o
+[ 70%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Euclid_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/ExternalRows_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Factor_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/getRow_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/globalObjects.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Hash_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Hash_i_dh.c.o
+[ 71%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/ilu_mpi_bj.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/ilu_mpi_pilu.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/ilu_seq.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/io_dh.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/krylov_dh.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Mat_dh.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/mat_dh_private.c.o
+[ 72%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/MatGenFD.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Mem_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Numbering_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Parser_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/shellSort_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/sig_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/SortedList_dh.c.o
+[ 73%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/SortedSet_dh.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/SubdomainGraph_dh.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/TimeLog_dh.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Timer_dh.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/Euclid/Vec_dh.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/ConjGrad.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/DiagScale.c.o
+[ 74%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/FGmres.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/hypre_ParaSails.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/Hash.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/LoadBal.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/Matrix.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/Mem.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/Numbering.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/ParaSails.c.o
+[ 75%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/OrderStat.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/PrunedRows.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/RowPatt.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/ParaSails/StoredRows.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/comm.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/debug.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/distributed_qsort.c.o
+[ 76%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/distributed_qsort_si.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/HYPRE_DistributedMatrixPilutSolver.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/ilut.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/parilut.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/parutil.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/pblas1.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/serilut.c.o
+[ 77%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/trifactor.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/distributed_ls/pilut/util.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/amg_hybrid.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/aux_interp.c.o
+[ 78%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/dsuperlu.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_hypre_laplace.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_amg.c.o
+[ 78%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_bicgstab.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_block.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_cgnr.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_Euclid.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_gmres.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_cogmres.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_flexgmres.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_lgmres.c.o
+[ 79%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_hybrid.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_int.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_ParaSails.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_pcg.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_pilut.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_schwarz.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_mgr.c.o
+[ 80%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_parcsr_ilu.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/F90_HYPRE_ams.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_amg.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/gen_redcs_mat.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_amgdd.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_block.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_bicgstab.c.o
+[ 81%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_cgnr.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_Euclid.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_cheby.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_gmres.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_cogmres.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_flexgmres.c.o
+[ 82%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_lgmres.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_hybrid.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_int.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_ilu.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_ParaSails.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_mgr.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_pcg.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_pilut.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_schwarz.c.o
+[ 83%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_parcsr_fsai.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_ams.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_ads.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/HYPRE_ame.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_2s_interp.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amg.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd.c.o
+[ 84%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_comp_grid.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_solve.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_helpers.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_setup.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_fac_cycle.c.o
+[ 85%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_amg_setup.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amg_solveT.c.o
+[ 85%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_amg_solve.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_coarsen.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cg_relax_wt.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cgc_coarsen.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cheby.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cheby_setup.c.o
+[ 86%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cheby_solve.c.o
+[ 86%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_cheby_device.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_coarse_parms.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_coordinates.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cr.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_cycle.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_add_cycle.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_difconv.c.o
+[ 87%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_fsai.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_fsai_setup.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_fsai_solve.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_gauss_elim.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_gsmg.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_indepset.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_jacobi_interp.c.o
+[ 88%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_interp.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_krylov_func.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mod_lr_interp.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mod_multi_interp.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_multi_interp.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_laplace_27pt.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_laplace_9pt.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_lr_interp.c.o
+[ 89%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_laplace.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_coarsen.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_interp.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_rap.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_setup.c.o
+[ 90%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_solve.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_nongalerkin.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_stats.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_nodal_systems.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_rap.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_rap_communication.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_rotate_7pt.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_vardifconv_rs.c.o
+[ 91%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_vardifconv.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_relax.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_relax_more.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_relax_interface.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_scaled_matnorm.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_schwarz.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_stats.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_strength.c.o
+[ 92%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_sv_interp.c.o
+[ 93%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_sv_interp_ln.c.o
+[ 93%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/partial.c.o
+[ 93%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/schwarz.c.o
+[ 93%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/block_tridiag.c.o
+[ 93%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/ams.c.o
+[ 93%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/ads.c.o
+[ 93%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/ame.c.o
+[ 94%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_restr.c.o
+[ 94%] Building C object CMakeFiles/HYPRE.dir/parcsr_ls/par_lr_restr.c.o
+[ 94%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ilu.c.o
+[ 94%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ilu_setup.c.o
+[ 94%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ilu_solve.c.o
+[ 94%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_coarse_parms_device.c.o
+[ 94%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_fsai_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ge_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_relax_more_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_coarsen_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_indepset_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_interp_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_interp_trunc_device.c.o
+[ 95%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_lr_interp_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_lr_restr_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_strength_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_strength2nd_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_amgdd_fac_cycle_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_2s_interp_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_relax_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_mod_multi_interp_device.c.o
+[ 96%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_mgr_device.c.o
+[ 97%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ilu_setup_device.c.o
+[ 97%] Building HIP object CMakeFiles/HYPRE.dir/parcsr_ls/par_ilu_solve_device.c.o
+[ 97%] Linking HIP static library lib/libHYPRE.a
+[ 97%] Built target HYPRE
+[ 97%] Building HIP object test/CMakeFiles/struct_migrate.dir/struct_migrate.c.o
+[ 97%] Building HIP object test/CMakeFiles/structmat.dir/structmat.c.o
+[ 97%] Building HIP object test/CMakeFiles/struct.dir/struct.c.o
+[ 97%] Building HIP object test/CMakeFiles/test_csr_overlap.dir/test_csr_overlap.c.o
+[ 97%] Building HIP object test/CMakeFiles/ij_assembly.dir/ij_assembly.c.o
+[ 97%] Building HIP object test/CMakeFiles/sstructmat.dir/sstruct_helpers.c.o
+[ 97%] Building HIP object test/CMakeFiles/sstructmat.dir/sstructmat.c.o
+[ 97%] Building HIP object test/CMakeFiles/ams_driver.dir/ams_driver.c.o
+[ 97%] Building HIP object test/CMakeFiles/ij.dir/ij.c.o
+[ 97%] Building HIP object test/CMakeFiles/sstruct.dir/sstruct.c.o
+[ 97%] Linking CXX executable struct_migrate
+[ 97%] Linking CXX executable ams_driver
+[ 97%] Linking CXX executable ij_assembly
+[ 97%] Linking CXX executable structmat
+[ 97%] Linking CXX executable test_csr_overlap
+Copied struct_migrate to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 97%] Built target struct_migrate
+Copied structmat to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 97%] Built target structmat
+[ 97%] Linking CXX executable struct
+Copied ij_assembly to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 97%] Built target ij_assembly
+Copied test_csr_overlap to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+Copied ams_driver to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 97%] Built target test_csr_overlap
+[ 97%] Built target ams_driver
+[ 98%] Linking CXX executable sstructmat
+Copied struct to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 98%] Built target struct
+Copied sstructmat to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[ 98%] Built target sstructmat
+[ 98%] Linking CXX executable sstruct
+[100%] Linking CXX executable ij
+Copied sstruct to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+Copied ij to /home/tobias/SINTEF/hypre-sep/hypre/src/test
+[100%] Built target sstruct
+[100%] Built target ij
+-------- make done --------
+
+-------- [5/6] Running tests... --------
+-------- Running testilu.sh --------
+-------- Running checktest.sh --------
+
+FAILED : TEST_ij/ilu.err  (59997)
+
+[tobias-PC:3397727] *** Process received signal ***
+[tobias-PC:3397727] Signal: Segmentation fault (11)
+[tobias-PC:3397727] Signal code: Address not mapped (1)
+[tobias-PC:3397727] Failing at address: 0x18
+[tobias-PC:3397727] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7499b8442520]
+[tobias-PC:3397727] [ 1] ./ij(hypre_CSRMatrixTriLowerUpperSolveDevice+0x1)[0x5b13627ff891]
+[tobias-PC:3397727] [ 2] ./ij(hypre_ILUSolveLUDevice+0x15f)[0x5b1362a1f59f]
+[tobias-PC:3397727] [ 3] ./ij(hypre_ILUSolve+0x96c)[0x5b13629e0acc]
+[tobias-PC:3397727] [ 4] ./ij(main+0x16bfc)[0x5b13627a2bcc]
+[tobias-PC:3397727] [ 5] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7499b8429d90]
+[tobias-PC:3397727] [ 6] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7499b8429e40]
+[tobias-PC:3397727] [ 7] ./ij(_start+0x25)[0x5b136278bf05]
+[tobias-PC:3397727] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 0 with PID 0 on node tobias-PC exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398015] *** Process received signal ***
+[tobias-PC:3398015] Signal: Aborted (6)
+[tobias-PC:3398015] Signal code:  (-6)
+[tobias-PC:3398015] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7a6c16c42520]
+[tobias-PC:3398015] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7a6c16c969fc]
+[tobias-PC:3398015] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7a6c16c42476]
+[tobias-PC:3398015] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7a6c16c287f3]
+[tobias-PC:3398015] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7a6c436a2b9e]
+[tobias-PC:3398015] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7a6c436ae20c]
+[tobias-PC:3398015] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7a6c436ae277]
+[tobias-PC:3398015] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7a6c436ae4d8]
+[tobias-PC:3398015] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x6038462e3fb0]
+[tobias-PC:3398015] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x6038463a8fb1]
+[tobias-PC:3398015] [10] ./ij(main+0x8a83)[0x60384626ba53]
+[tobias-PC:3398015] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7a6c16c29d90]
+[tobias-PC:3398015] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7a6c16c29e40]
+[tobias-PC:3398015] [13] ./ij(_start+0x25)[0x603846262f05]
+[tobias-PC:3398015] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398165] *** Process received signal ***
+[tobias-PC:3398165] Signal: Aborted (6)
+[tobias-PC:3398165] Signal code:  (-6)
+[tobias-PC:3398165] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x721997842520]
+[tobias-PC:3398165] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7219978969fc]
+[tobias-PC:3398165] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x721997842476]
+[tobias-PC:3398165] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7219978287f3]
+[tobias-PC:3398165] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7219c42a2b9e]
+[tobias-PC:3398165] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7219c42ae20c]
+[tobias-PC:3398165] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7219c42ae277]
+[tobias-PC:3398165] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7219c42ae4d8]
+[tobias-PC:3398165] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x60cdc1cdafb0]
+[tobias-PC:3398165] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x60cdc1d9ffb1]
+[tobias-PC:3398165] [10] ./ij(main+0x8a83)[0x60cdc1c62a53]
+[tobias-PC:3398165] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x721997829d90]
+[tobias-PC:3398165] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x721997829e40]
+[tobias-PC:3398165] [13] ./ij(_start+0x25)[0x60cdc1c59f05]
+[tobias-PC:3398165] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398354] *** Process received signal ***
+[tobias-PC:3398354] Signal: Aborted (6)
+[tobias-PC:3398354] Signal code:  (-6)
+[tobias-PC:3398354] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7f3b60a42520]
+[tobias-PC:3398354] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7f3b60a969fc]
+[tobias-PC:3398354] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7f3b60a42476]
+[tobias-PC:3398354] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7f3b60a287f3]
+[tobias-PC:3398354] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7f3b8d4a2b9e]
+[tobias-PC:3398354] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7f3b8d4ae20c]
+[tobias-PC:3398354] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7f3b8d4ae277]
+[tobias-PC:3398354] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7f3b8d4ae4d8]
+[tobias-PC:3398354] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x58023e815fb0]
+[tobias-PC:3398354] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x58023e8dafb1]
+[tobias-PC:3398354] [10] ./ij(main+0x8a83)[0x58023e79da53]
+[tobias-PC:3398354] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7f3b60a29d90]
+[tobias-PC:3398354] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7f3b60a29e40]
+[tobias-PC:3398354] [13] ./ij(_start+0x25)[0x58023e794f05]
+[tobias-PC:3398354] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398513] *** Process received signal ***
+[tobias-PC:3398513] Signal: Aborted (6)
+[tobias-PC:3398513] Signal code:  (-6)
+[tobias-PC:3398513] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x756a6d642520]
+[tobias-PC:3398513] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x756a6d6969fc]
+[tobias-PC:3398513] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x756a6d642476]
+[tobias-PC:3398513] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x756a6d6287f3]
+[tobias-PC:3398513] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x756a9a0a2b9e]
+[tobias-PC:3398513] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x756a9a0ae20c]
+[tobias-PC:3398513] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x756a9a0ae277]
+[tobias-PC:3398513] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x756a9a0ae4d8]
+[tobias-PC:3398513] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5a3890c3dfb0]
+[tobias-PC:3398513] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5a3890d02fb1]
+[tobias-PC:3398513] [10] ./ij(main+0x8a83)[0x5a3890bc5a53]
+[tobias-PC:3398513] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x756a6d629d90]
+[tobias-PC:3398513] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x756a6d629e40]
+[tobias-PC:3398513] [13] ./ij(_start+0x25)[0x5a3890bbcf05]
+[tobias-PC:3398513] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398715] *** Process received signal ***
+[tobias-PC:3398715] Signal: Aborted (6)
+[tobias-PC:3398715] Signal code:  (-6)
+[tobias-PC:3398715] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x71f7cfc42520]
+[tobias-PC:3398715] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x71f7cfc969fc]
+[tobias-PC:3398715] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x71f7cfc42476]
+[tobias-PC:3398715] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x71f7cfc287f3]
+[tobias-PC:3398715] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x71f7fc6a2b9e]
+[tobias-PC:3398715] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x71f7fc6ae20c]
+[tobias-PC:3398715] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x71f7fc6ae277]
+[tobias-PC:3398715] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x71f7fc6ae4d8]
+[tobias-PC:3398715] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x61fb103f2fb0]
+[tobias-PC:3398715] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x61fb104b7fb1]
+[tobias-PC:3398715] [10] ./ij(main+0x8a83)[0x61fb1037aa53]
+[tobias-PC:3398715] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x71f7cfc29d90]
+[tobias-PC:3398715] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x71f7cfc29e40]
+[tobias-PC:3398715] [13] ./ij(_start+0x25)[0x61fb10371f05]
+[tobias-PC:3398715] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3398865] *** Process received signal ***
+[tobias-PC:3398865] Signal: Aborted (6)
+[tobias-PC:3398865] Signal code:  (-6)
+[tobias-PC:3398865] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7df97d042520]
+[tobias-PC:3398865] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7df97d0969fc]
+[tobias-PC:3398865] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7df97d042476]
+[tobias-PC:3398865] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7df97d0287f3]
+[tobias-PC:3398865] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7df9a9aa2b9e]
+[tobias-PC:3398865] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7df9a9aae20c]
+[tobias-PC:3398865] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7df9a9aae277]
+[tobias-PC:3398865] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7df9a9aae4d8]
+[tobias-PC:3398865] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x58df9aa18fb0]
+[tobias-PC:3398865] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x58df9aaddfb1]
+[tobias-PC:3398865] [10] ./ij(main+0x8a83)[0x58df9a9a0a53]
+[tobias-PC:3398865] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7df97d029d90]
+[tobias-PC:3398865] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7df97d029e40]
+[tobias-PC:3398865] [13] ./ij(_start+0x25)[0x58df9a997f05]
+[tobias-PC:3398865] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399008] *** Process received signal ***
+[tobias-PC:3399008] Signal: Aborted (6)
+[tobias-PC:3399008] Signal code:  (-6)
+[tobias-PC:3399008] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7afd17c42520]
+[tobias-PC:3399008] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7afd17c969fc]
+[tobias-PC:3399008] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7afd17c42476]
+[tobias-PC:3399008] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7afd17c287f3]
+[tobias-PC:3399008] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7afd446a2b9e]
+[tobias-PC:3399008] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7afd446ae20c]
+[tobias-PC:3399008] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7afd446ae277]
+[tobias-PC:3399008] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7afd446ae4d8]
+[tobias-PC:3399008] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5986f275ffb0]
+[tobias-PC:3399008] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5986f2824fb1]
+[tobias-PC:3399008] [10] ./ij(main+0x8a83)[0x5986f26e7a53]
+[tobias-PC:3399008] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7afd17c29d90]
+[tobias-PC:3399008] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7afd17c29e40]
+[tobias-PC:3399008] [13] ./ij(_start+0x25)[0x5986f26def05]
+[tobias-PC:3399008] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399208] *** Process received signal ***
+[tobias-PC:3399208] Signal: Aborted (6)
+[tobias-PC:3399208] Signal code:  (-6)
+[tobias-PC:3399208] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7c8c01c42520]
+[tobias-PC:3399208] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7c8c01c969fc]
+[tobias-PC:3399208] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7c8c01c42476]
+[tobias-PC:3399208] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7c8c01c287f3]
+[tobias-PC:3399208] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7c8c2e6a2b9e]
+[tobias-PC:3399208] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7c8c2e6ae20c]
+[tobias-PC:3399208] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7c8c2e6ae277]
+[tobias-PC:3399208] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7c8c2e6ae4d8]
+[tobias-PC:3399208] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5960168d0fb0]
+[tobias-PC:3399208] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x596016995fb1]
+[tobias-PC:3399208] [10] ./ij(main+0x8a83)[0x596016858a53]
+[tobias-PC:3399208] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7c8c01c29d90]
+[tobias-PC:3399208] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7c8c01c29e40]
+[tobias-PC:3399208] [13] ./ij(_start+0x25)[0x59601684ff05]
+[tobias-PC:3399208] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399357] *** Process received signal ***
+[tobias-PC:3399357] Signal: Aborted (6)
+[tobias-PC:3399357] Signal code:  (-6)
+[tobias-PC:3399357] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x705e76a42520]
+[tobias-PC:3399357] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x705e76a969fc]
+[tobias-PC:3399357] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x705e76a42476]
+[tobias-PC:3399357] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x705e76a287f3]
+[tobias-PC:3399357] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x705ea34a2b9e]
+[tobias-PC:3399357] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x705ea34ae20c]
+[tobias-PC:3399357] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x705ea34ae277]
+[tobias-PC:3399357] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x705ea34ae4d8]
+[tobias-PC:3399357] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x578e64e24fb0]
+[tobias-PC:3399357] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x578e64ee9fb1]
+[tobias-PC:3399357] [10] ./ij(main+0x8a83)[0x578e64daca53]
+[tobias-PC:3399357] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x705e76a29d90]
+[tobias-PC:3399357] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x705e76a29e40]
+[tobias-PC:3399357] [13] ./ij(_start+0x25)[0x578e64da3f05]
+[tobias-PC:3399357] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399596] *** Process received signal ***
+[tobias-PC:3399596] Signal: Aborted (6)
+[tobias-PC:3399596] Signal code:  (-6)
+[tobias-PC:3399596] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x73ae32242520]
+[tobias-PC:3399596] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x73ae322969fc]
+[tobias-PC:3399596] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x73ae32242476]
+[tobias-PC:3399596] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x73ae322287f3]
+[tobias-PC:3399596] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x73ae5eca2b9e]
+[tobias-PC:3399596] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x73ae5ecae20c]
+[tobias-PC:3399596] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x73ae5ecae277]
+[tobias-PC:3399596] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x73ae5ecae4d8]
+[tobias-PC:3399596] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x644f54912fb0]
+[tobias-PC:3399596] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x644f549d7fb1]
+[tobias-PC:3399596] [10] ./ij(main+0x8a83)[0x644f5489aa53]
+[tobias-PC:3399596] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x73ae32229d90]
+[tobias-PC:3399596] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x73ae32229e40]
+[tobias-PC:3399596] [13] ./ij(_start+0x25)[0x644f54891f05]
+[tobias-PC:3399596] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399779] *** Process received signal ***
+[tobias-PC:3399779] Signal: Aborted (6)
+[tobias-PC:3399779] Signal code:  (-6)
+[tobias-PC:3399779] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7945e5e42520]
+[tobias-PC:3399779] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7945e5e969fc]
+[tobias-PC:3399779] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7945e5e42476]
+[tobias-PC:3399779] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7945e5e287f3]
+[tobias-PC:3399779] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7946128a2b9e]
+[tobias-PC:3399779] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7946128ae20c]
+[tobias-PC:3399779] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7946128ae277]
+[tobias-PC:3399779] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7946128ae4d8]
+[tobias-PC:3399779] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x567caf56cfb0]
+[tobias-PC:3399779] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x567caf631fb1]
+[tobias-PC:3399779] [10] ./ij(main+0x8a83)[0x567caf4f4a53]
+[tobias-PC:3399779] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7945e5e29d90]
+[tobias-PC:3399779] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7945e5e29e40]
+[tobias-PC:3399779] [13] ./ij(_start+0x25)[0x567caf4ebf05]
+[tobias-PC:3399779] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3399928] *** Process received signal ***
+[tobias-PC:3399928] Signal: Aborted (6)
+[tobias-PC:3399928] Signal code:  (-6)
+[tobias-PC:3399928] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7e5571242520]
+[tobias-PC:3399928] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7e55712969fc]
+[tobias-PC:3399928] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7e5571242476]
+[tobias-PC:3399928] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7e55712287f3]
+[tobias-PC:3399928] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7e559dca2b9e]
+[tobias-PC:3399928] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7e559dcae20c]
+[tobias-PC:3399928] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7e559dcae277]
+[tobias-PC:3399928] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7e559dcae4d8]
+[tobias-PC:3399928] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x57831479afb0]
+[tobias-PC:3399928] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x57831485ffb1]
+[tobias-PC:3399928] [10] ./ij(main+0x8a83)[0x578314722a53]
+[tobias-PC:3399928] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7e5571229d90]
+[tobias-PC:3399928] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7e5571229e40]
+[tobias-PC:3399928] [13] ./ij(_start+0x25)[0x578314719f05]
+[tobias-PC:3399928] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400119] *** Process received signal ***
+[tobias-PC:3400119] Signal: Aborted (6)
+[tobias-PC:3400119] Signal code:  (-6)
+[tobias-PC:3400119] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x766b37242520]
+[tobias-PC:3400119] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x766b372969fc]
+[tobias-PC:3400119] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x766b37242476]
+[tobias-PC:3400119] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x766b372287f3]
+[tobias-PC:3400119] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x766b63ca2b9e]
+[tobias-PC:3400119] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x766b63cae20c]
+[tobias-PC:3400119] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x766b63cae277]
+[tobias-PC:3400119] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x766b63cae4d8]
+[tobias-PC:3400119] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x56af9e32cfb0]
+[tobias-PC:3400119] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x56af9e3f1fb1]
+[tobias-PC:3400119] [10] ./ij(main+0x8a83)[0x56af9e2b4a53]
+[tobias-PC:3400119] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x766b37229d90]
+[tobias-PC:3400119] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x766b37229e40]
+[tobias-PC:3400119] [13] ./ij(_start+0x25)[0x56af9e2abf05]
+[tobias-PC:3400119] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400270] *** Process received signal ***
+[tobias-PC:3400270] Signal: Aborted (6)
+[tobias-PC:3400270] Signal code:  (-6)
+[tobias-PC:3400270] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x73f984e42520]
+[tobias-PC:3400270] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x73f984e969fc]
+[tobias-PC:3400270] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x73f984e42476]
+[tobias-PC:3400270] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x73f984e287f3]
+[tobias-PC:3400270] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x73f9b18a2b9e]
+[tobias-PC:3400270] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x73f9b18ae20c]
+[tobias-PC:3400270] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x73f9b18ae277]
+[tobias-PC:3400270] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x73f9b18ae4d8]
+[tobias-PC:3400270] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x612ebcf62fb0]
+[tobias-PC:3400270] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x612ebd027fb1]
+[tobias-PC:3400270] [10] ./ij(main+0x8a83)[0x612ebceeaa53]
+[tobias-PC:3400270] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x73f984e29d90]
+[tobias-PC:3400270] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x73f984e29e40]
+[tobias-PC:3400270] [13] ./ij(_start+0x25)[0x612ebcee1f05]
+[tobias-PC:3400270] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400500] *** Process received signal ***
+[tobias-PC:3400500] Signal: Aborted (6)
+[tobias-PC:3400500] Signal code:  (-6)
+[tobias-PC:3400500] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x783237842520]
+[tobias-PC:3400500] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7832378969fc]
+[tobias-PC:3400500] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x783237842476]
+[tobias-PC:3400500] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7832378287f3]
+[tobias-PC:3400500] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7832642a2b9e]
+[tobias-PC:3400500] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7832642ae20c]
+[tobias-PC:3400500] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7832642ae277]
+[tobias-PC:3400500] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7832642ae4d8]
+[tobias-PC:3400500] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5691c48bdfb0]
+[tobias-PC:3400500] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5691c4982fb1]
+[tobias-PC:3400500] [10] ./ij(main+0x8a83)[0x5691c4845a53]
+[tobias-PC:3400500] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x783237829d90]
+[tobias-PC:3400500] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x783237829e40]
+[tobias-PC:3400500] [13] ./ij(_start+0x25)[0x5691c483cf05]
+[tobias-PC:3400500] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400646] *** Process received signal ***
+[tobias-PC:3400646] Signal: Aborted (6)
+[tobias-PC:3400646] Signal code:  (-6)
+[tobias-PC:3400646] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7c737c642520]
+[tobias-PC:3400646] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7c737c6969fc]
+[tobias-PC:3400646] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7c737c642476]
+[tobias-PC:3400646] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7c737c6287f3]
+[tobias-PC:3400646] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7c73a90a2b9e]
+[tobias-PC:3400646] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7c73a90ae20c]
+[tobias-PC:3400646] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7c73a90ae277]
+[tobias-PC:3400646] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7c73a90ae4d8]
+[tobias-PC:3400646] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5c0530e87fb0]
+[tobias-PC:3400646] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5c0530f4cfb1]
+[tobias-PC:3400646] [10] ./ij(main+0x8a83)[0x5c0530e0fa53]
+[tobias-PC:3400646] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7c737c629d90]
+[tobias-PC:3400646] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7c737c629e40]
+[tobias-PC:3400646] [13] ./ij(_start+0x25)[0x5c0530e06f05]
+[tobias-PC:3400646] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400779] *** Process received signal ***
+[tobias-PC:3400779] Signal: Aborted (6)
+[tobias-PC:3400779] Signal code:  (-6)
+[tobias-PC:3400779] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7d1175242520]
+[tobias-PC:3400779] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7d11752969fc]
+[tobias-PC:3400779] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7d1175242476]
+[tobias-PC:3400779] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7d11752287f3]
+[tobias-PC:3400779] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7d11a1ca2b9e]
+[tobias-PC:3400779] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7d11a1cae20c]
+[tobias-PC:3400779] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7d11a1cae277]
+[tobias-PC:3400779] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7d11a1cae4d8]
+[tobias-PC:3400779] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x63a5675a2fb0]
+[tobias-PC:3400779] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x63a567667fb1]
+[tobias-PC:3400779] [10] ./ij(main+0x8a83)[0x63a56752aa53]
+[tobias-PC:3400779] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7d1175229d90]
+[tobias-PC:3400779] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7d1175229e40]
+[tobias-PC:3400779] [13] ./ij(_start+0x25)[0x63a567521f05]
+[tobias-PC:3400779] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3400970] *** Process received signal ***
+[tobias-PC:3400970] Signal: Aborted (6)
+[tobias-PC:3400970] Signal code:  (-6)
+[tobias-PC:3400970] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x793960842520]
+[tobias-PC:3400970] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7939608969fc]
+[tobias-PC:3400970] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x793960842476]
+[tobias-PC:3400970] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7939608287f3]
+[tobias-PC:3400970] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x79398d2a2b9e]
+[tobias-PC:3400970] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x79398d2ae20c]
+[tobias-PC:3400970] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x79398d2ae277]
+[tobias-PC:3400970] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x79398d2ae4d8]
+[tobias-PC:3400970] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x58c77e727fb0]
+[tobias-PC:3400970] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x58c77e7ecfb1]
+[tobias-PC:3400970] [10] ./ij(main+0x8a83)[0x58c77e6afa53]
+[tobias-PC:3400970] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x793960829d90]
+[tobias-PC:3400970] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x793960829e40]
+[tobias-PC:3400970] [13] ./ij(_start+0x25)[0x58c77e6a6f05]
+[tobias-PC:3400970] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3401122] *** Process received signal ***
+[tobias-PC:3401122] Signal: Aborted (6)
+[tobias-PC:3401122] Signal code:  (-6)
+[tobias-PC:3401122] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x76a98d442520]
+[tobias-PC:3401122] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x76a98d4969fc]
+[tobias-PC:3401122] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x76a98d442476]
+[tobias-PC:3401122] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x76a98d4287f3]
+[tobias-PC:3401122] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x76a9b9ea2b9e]
+[tobias-PC:3401122] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x76a9b9eae20c]
+[tobias-PC:3401122] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x76a9b9eae277]
+[tobias-PC:3401122] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x76a9b9eae4d8]
+[tobias-PC:3401122] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5c324c54dfb0]
+[tobias-PC:3401122] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5c324c612fb1]
+[tobias-PC:3401122] [10] ./ij(main+0x8a83)[0x5c324c4d5a53]
+[tobias-PC:3401122] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x76a98d429d90]
+[tobias-PC:3401122] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x76a98d429e40]
+[tobias-PC:3401122] [13] ./ij(_start+0x25)[0x5c324c4ccf05]
+[tobias-PC:3401122] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3401357] *** Process received signal ***
+[tobias-PC:3401357] Signal: Aborted (6)
+[tobias-PC:3401357] Signal code:  (-6)
+[tobias-PC:3401357] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7ede62042520]
+[tobias-PC:3401357] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7ede620969fc]
+[tobias-PC:3401357] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7ede62042476]
+[tobias-PC:3401357] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7ede620287f3]
+[tobias-PC:3401357] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7ede8eaa2b9e]
+[tobias-PC:3401357] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7ede8eaae20c]
+[tobias-PC:3401357] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7ede8eaae277]
+[tobias-PC:3401357] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7ede8eaae4d8]
+[tobias-PC:3401357] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5b29a8b71fb0]
+[tobias-PC:3401357] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5b29a8c36fb1]
+[tobias-PC:3401357] [10] ./ij(main+0x8a83)[0x5b29a8af9a53]
+[tobias-PC:3401357] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7ede62029d90]
+[tobias-PC:3401357] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7ede62029e40]
+[tobias-PC:3401357] [13] ./ij(_start+0x25)[0x5b29a8af0f05]
+[tobias-PC:3401357] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3401505] *** Process received signal ***
+[tobias-PC:3401505] Signal: Aborted (6)
+[tobias-PC:3401505] Signal code:  (-6)
+[tobias-PC:3401505] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x71c69f242520]
+[tobias-PC:3401505] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x71c69f2969fc]
+[tobias-PC:3401505] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x71c69f242476]
+[tobias-PC:3401505] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x71c69f2287f3]
+[tobias-PC:3401505] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x71c6cbca2b9e]
+[tobias-PC:3401505] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x71c6cbcae20c]
+[tobias-PC:3401505] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x71c6cbcae277]
+[tobias-PC:3401505] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x71c6cbcae4d8]
+[tobias-PC:3401505] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x6349671f8fb0]
+[tobias-PC:3401505] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x6349672bdfb1]
+[tobias-PC:3401505] [10] ./ij(main+0x8a83)[0x634967180a53]
+[tobias-PC:3401505] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x71c69f229d90]
+[tobias-PC:3401505] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x71c69f229e40]
+[tobias-PC:3401505] [13] ./ij(_start+0x25)[0x634967177f05]
+[tobias-PC:3401505] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3401658] *** Process received signal ***
+[tobias-PC:3401658] Signal: Aborted (6)
+[tobias-PC:3401658] Signal code:  (-6)
+[tobias-PC:3401658] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7a46de642520]
+[tobias-PC:3401658] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7a46de6969fc]
+[tobias-PC:3401658] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7a46de642476]
+[tobias-PC:3401658] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7a46de6287f3]
+[tobias-PC:3401658] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x7a470b0a2b9e]
+[tobias-PC:3401658] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x7a470b0ae20c]
+[tobias-PC:3401658] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x7a470b0ae277]
+[tobias-PC:3401658] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x7a470b0ae4d8]
+[tobias-PC:3401658] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x592513fbcfb0]
+[tobias-PC:3401658] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x592514081fb1]
+[tobias-PC:3401658] [10] ./ij(main+0x8a83)[0x592513f44a53]
+[tobias-PC:3401658] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7a46de629d90]
+[tobias-PC:3401658] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7a46de629e40]
+[tobias-PC:3401658] [13] ./ij(_start+0x25)[0x592513f3bf05]
+[tobias-PC:3401658] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  parallel_for failed: hipErrorInvalidDeviceFunction: invalid device function
+[tobias-PC:3401815] *** Process received signal ***
+[tobias-PC:3401815] Signal: Aborted (6)
+[tobias-PC:3401815] Signal code:  (-6)
+[tobias-PC:3401815] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x74ed12c42520]
+[tobias-PC:3401815] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x74ed12c969fc]
+[tobias-PC:3401815] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x74ed12c42476]
+[tobias-PC:3401815] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x74ed12c287f3]
+[tobias-PC:3401815] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x74ed3f6a2b9e]
+[tobias-PC:3401815] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x74ed3f6ae20c]
+[tobias-PC:3401815] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x74ed3f6ae277]
+[tobias-PC:3401815] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x74ed3f6ae4d8]
+[tobias-PC:3401815] [ 8] ./ij(_ZZN6thrust11hip_rocprim12parallel_forINS_6detail22execute_with_allocatorIR22hypre_device_allocatorNS0_22execute_on_stream_baseEEENS0_10__tabulate7functorIPiNS_6system6detail7generic6detail22compute_sequence_valueIivEElEElEEvRNS0_16execution_policyIT_EET0_T1_EN10workaround3parERNSI_IS7_EESH_l+0x1d0)[0x5a2cc7409fb0]
+[tobias-PC:3401815] [ 9] ./ij(hypre_IJVectorSetAddValuesParDevice+0x221)[0x5a2cc74cefb1]
+[tobias-PC:3401815] [10] ./ij(main+0x8a83)[0x5a2cc7391a53]
+[tobias-PC:3401815] [11] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x74ed12c29d90]
+[tobias-PC:3401815] [12] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x74ed12c29e40]
+[tobias-PC:3401815] [13] ./ij(_start+0x25)[0x5a2cc7388f05]
+[tobias-PC:3401815] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 1 with PID 0 on node tobias-PC exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+Incorrect number of runs in ilu.out
+Numeric type mismatch in floating point or integer comparison!!
+(6) - hypre_ILU Iterations = 40 
+(8) +     Initial    3.162278e+01                 1.000000e+00 
+
+(7) - Final Relative Residual Norm = 9.772377e-09
+(8) +     Initial    3.162278e+01                 1.000000e+00      (err 1.00e+00)
+
+(14) - hypre_ILU Iterations = 64
+(14) +   Number of vector components: 1      (err 63)
+
+Numeric type mismatch in floating point or integer comparison!!
+(15) - Final Relative Residual Norm = 8.558467e-09 
+(16) +   Initial guess is 0 
+
+(18) - hypre_ILU Iterations = 52
+(18) +   Number of vector components: 1      (err 51)
+
+Numeric type mismatch in floating point or integer comparison!!
+(19) - Final Relative Residual Norm = 9.189235e-09 
+(20) +   Initial guess is 0 
+
+(22) - hypre_ILU Iterations = 38
+(22) +   Number of vector components: 1      (err 37)
+
+Numeric type mismatch in floating point or integer comparison!!
+(23) - Final Relative Residual Norm = 7.024121e-09 
+(24) +   Initial guess is 0 
+
+(26) - hypre_ILU Iterations = 26
+(26) +   Number of vector components: 1      (err 25)
+
+Numeric type mismatch in floating point or integer comparison!!
+(27) - Final Relative Residual Norm = 7.556742e-09 
+(28) +   Initial guess is 0 
+
+(30) - hypre_ILU Iterations = 38
+(30) +   Number of vector components: 1      (err 37)
+
+Numeric type mismatch in floating point or integer comparison!!
+(31) - Final Relative Residual Norm = 7.037599e-09 
+(32) +   Initial guess is 0 
+
+(34) - hypre_ILU Iterations = 26
+(34) +   Number of vector components: 1      (err 25)
+
+Numeric type mismatch in floating point or integer comparison!!
+(35) - Final Relative Residual Norm = 7.593126e-09 
+(36) +   Initial guess is 0 
+
+(38) - hypre_ILU Iterations = 49
+(38) +   Number of vector components: 1      (err 48)
+
+Numeric type mismatch in floating point or integer comparison!!
+(39) - Final Relative Residual Norm = 7.072947e-09 
+(40) +   Initial guess is 0 
+
+(42) - hypre_ILU Iterations = 42
+(42) +   Number of vector components: 1      (err 41)
+
+Numeric type mismatch in floating point or integer comparison!!
+(43) - Final Relative Residual Norm = 6.699477e-09 
+(44) +   Initial guess is 0 
+
+(46) - hypre_ILU Iterations = 36
+(46) +   Number of vector components: 1      (err 35)
+
+Numeric type mismatch in floating point or integer comparison!!
+(47) - Final Relative Residual Norm = 6.392185e-09 
+(48) +   Initial guess is 0 
+
+(50) - hypre_ILU Iterations = 24
+(50) +   Number of vector components: 1      (err 23)
+
+Numeric type mismatch in floating point or integer comparison!!
+(51) - Final Relative Residual Norm = 5.953652e-09 
+(52) +   Initial guess is 0 
+
+(54) - GMRES Iterations = 25
+(54) +   Number of vector components: 1      (err 24)
+
+Numeric type mismatch in floating point or integer comparison!!
+(55) - Final GMRES Relative Residual Norm = 3.968804e-09 
+(56) +   Initial guess is 0 
+
+(58) - GMRES Iterations = 19
+(58) +   Number of vector components: 1      (err 18)
+
+Numeric type mismatch in floating point or integer comparison!!
+(59) - Final GMRES Relative Residual Norm = 7.026446e-09 
+(60) +   Initial guess is 0 
+
+(62) - GMRES Iterations = 20
+(62) +   Number of vector components: 1      (err 19)
+
+Numeric type mismatch in floating point or integer comparison!!
+(63) - Final GMRES Relative Residual Norm = 7.908624e-09 
+(64) +   Initial guess is 0 
+
+(66) - GMRES Iterations = 13
+(66) +   Number of vector components: 1      (err 12)
+
+Numeric type mismatch in floating point or integer comparison!!
+(67) - Final GMRES Relative Residual Norm = 7.969372e-09 
+(68) +   Initial guess is 0 
+
+(70) - FlexGMRES Iterations = 17
+(70) +   Number of vector components: 1      (err 16)
+
+Numeric type mismatch in floating point or integer comparison!!
+(71) - Final FlexGMRES Relative Residual Norm = 9.152443e-09 
+(72) +   Initial guess is 0 
+
+(74) - FlexGMRES Iterations = 9
+(74) +   Number of vector components: 1      (err 8)
+
+Numeric type mismatch in floating point or integer comparison!!
+(75) - Final FlexGMRES Relative Residual Norm = 5.768785e-09 
+(76) +   Initial guess is 0 
+
+(78) - FlexGMRES Iterations = 17
+(78) +   Number of vector components: 1      (err 16)
+
+Numeric type mismatch in floating point or integer comparison!!
+(79) - Final FlexGMRES Relative Residual Norm = 9.133102e-09 
+(80) +   Initial guess is 0 
+
+(82) - FlexGMRES Iterations = 9
+(82) +   Number of vector components: 1      (err 8)
+
+Numeric type mismatch in floating point or integer comparison!!
+(83) - Final FlexGMRES Relative Residual Norm = 6.299457e-09 
+(84) +   Initial guess is 0 
+
+(86) - FlexGMRES Iterations = 17
+(86) +   Number of vector components: 1      (err 16)
+
+Numeric type mismatch in floating point or integer comparison!!
+(87) - Final FlexGMRES Relative Residual Norm = 4.489256e-09 
+(88) +   Initial guess is 0 
+
+(90) - FlexGMRES Iterations = 8
+(90) +   Number of vector components: 1      (err 7)
+
+Numeric type mismatch in floating point or integer comparison!!
+(91) - Final FlexGMRES Relative Residual Norm = 3.082447e-09 
+(92) +   Initial guess is 0 
+
+(94) - FlexGMRES Iterations = 18
+(94) +   Number of vector components: 1      (err 17)
+
+Numeric type mismatch in floating point or integer comparison!!
+(95) - Final FlexGMRES Relative Residual Norm = 4.133851e-09 
+(96) +   Initial guess is 0 
+
+(98) - BoomerAMG Iterations = 8
+(98) +   Number of vector components: 1      (err 7)
+
+Numeric type mismatch in floating point or integer comparison!!
+(99) - Final Relative Residual Norm = 8.380440e-09 
+(100) +   Initial guess is 0 
+
+(102) - BoomerAMG Iterations = 7
+(102) +   Number of vector components: 1      (err 6)
+
+Numeric type mismatch in floating point or integer comparison!!
+(103) - Final Relative Residual Norm = 7.074639e-09 
+(104) +   Initial guess is 0 
+

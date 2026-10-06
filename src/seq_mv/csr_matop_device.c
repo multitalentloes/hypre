@@ -1323,8 +1323,56 @@ hypreGPUKernel_CSRMoveDiagFirst( hypre_DeviceItem    &item,
    q = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 1);
    p = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 0);
 
+   for (HYPRE_Int j = p + lane + 1; warp_any_sync(item, HYPRE_WARP_FULL_MASK, j < q);
+        j += HYPRE_WARP_SIZE)
+   {
+      hypre_int find_diag = j < q && ja[j] == row;
+
+      if (find_diag)
+      {
+         ja[j] = ja[p];
+         ja[p] = row;
+         HYPRE_Complex tmp = aa[p];
+         aa[p] = aa[j];
+         aa[j] = tmp;
+      }
+
+      if ( warp_any_sync(item, HYPRE_WARP_FULL_MASK, find_diag) )
+      {
+         break;
+      }
+   }
+}
+
+/* Ordered shifting is confined to the custom level-set factorization. */
+__global__ void
+hypreGPUKernel_CSRMoveDiagFirstOrdered( hypre_DeviceItem    &item,
+                                 HYPRE_Int      nrows,
+                                 HYPRE_Int     *ia,
+                                 HYPRE_Int     *ja,
+                                 HYPRE_Complex *aa )
+{
+   HYPRE_Int row  = hypre_gpu_get_grid_warp_id<1, 1>(item);
+   HYPRE_Int lane = hypre_gpu_get_lane_id<1>(item);
+
+   if (row >= nrows)
+   {
+      return;
+   }
+
+   HYPRE_Int p = 0, q = 0;
+
+   if (lane < 2)
+   {
+      p = read_only_load(ia + row + lane);
+   }
+
+   q = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 1);
+   p = warp_shuffle_sync(item, HYPRE_WARP_FULL_MASK, p, 0);
+
    if (lane == 0)
    {
+      if (p == q || ja[p] == row) { return; }
       HYPRE_Int diag_pos = p + 1;
       while (diag_pos < q && ja[diag_pos] != row)
       {
@@ -1364,6 +1412,26 @@ hypre_CSRMatrixMoveDiagFirstDevice( hypre_CSRMatrix  *A )
    dim3 gDim = hypre_GetDefaultDeviceGridDimension(nrows, "warp", bDim);
 
    HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMoveDiagFirst, gDim, bDim,
+                    nrows, A_i, A_j, A_data);
+
+   hypre_SyncComputeStream();
+
+   return hypre_error_flag;
+}
+
+/* Type-60-only variant: retain sorted off-diagonals after moving diagonal. */
+HYPRE_Int
+hypre_CSRMatrixMoveDiagFirstOrderedDevice( hypre_CSRMatrix  *A )
+{
+   HYPRE_Int      nrows  = hypre_CSRMatrixNumRows(A);
+   HYPRE_Complex *A_data = hypre_CSRMatrixData(A);
+   HYPRE_Int     *A_i    = hypre_CSRMatrixI(A);
+   HYPRE_Int     *A_j    = hypre_CSRMatrixJ(A);
+
+   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
+   dim3 gDim = hypre_GetDefaultDeviceGridDimension(nrows, "warp", bDim);
+
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMoveDiagFirstOrdered, gDim, bDim,
                     nrows, A_i, A_j, A_data);
 
    hypre_SyncComputeStream();
@@ -4399,7 +4467,8 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
                                               HYPRE_Int         *level_set_rows,
                                               HYPRE_Int         *A_i,
                                               HYPRE_Int         *A_j,
-                                              HYPRE_Complex     *A_data)
+                                              HYPRE_Complex     *A_data,
+                                              HYPRE_Int         *error_row)
 {
    const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
    if (tid >= level_set_size)
@@ -4411,6 +4480,16 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
    const HYPRE_Int row       = level_set_rows[tid];
    const HYPRE_Int row_start = A_i[row];
    const HYPRE_Int row_end   = A_i[row + 1];
+
+   for (HYPRE_Int p = row_start; p < row_end; p++)
+   {
+      if (!isfinite(A_data[p]))
+      {
+         atomicMin(error_row, row);
+         A_data[row_start] = 0;
+         return;
+      }
+   }
 
    /*
     * Iterate lower-triangular entries of row
@@ -4426,6 +4505,12 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
       const HYPRE_Int k_end   = A_i[k + 1];
 
       /* A[k,k] is at k_start (diagonal-first); compute L multiplier */
+      if (A_data[k_start] == 0 || !isfinite(A_data[k_start]))
+      {
+         atomicMin(error_row, row);
+         A_data[row_start] = 0;
+         return;
+      }
       A_data[k_pos] /= A_data[k_start];
       const HYPRE_Complex mult = A_data[k_pos];
 
@@ -4456,6 +4541,14 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
          }
       }
    }
+   HYPRE_Int bad = A_data[row_start] == 0;
+   for (HYPRE_Int p = row_start; p < row_end; p++) { bad |= !isfinite(A_data[p]); }
+   if (bad)
+   {
+      atomicMin(error_row, row);
+      A_data[row_start] = 0;
+   }
+
 }
 
 /*--------------------------------------------------------------------------
@@ -4481,6 +4574,10 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
    HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
    HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
 
+   HYPRE_Int error_row = hypre_CSRMatrixNumRows(A);
+   HYPRE_Int *d_error_row = hypre_TAlloc(HYPRE_Int, 1, HYPRE_MEMORY_DEVICE);
+   hypre_TMemcpy(d_error_row, &error_row, HYPRE_Int, 1, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+
    HYPRE_ANNOTATE_FUNC_BEGIN;
 
    dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
@@ -4503,9 +4600,17 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
       HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetFactorize, gDim, bDim,
                        level_set_size,
                        d_low_level_set_rows + level_offset,
-                       A_i, A_j, A_data);
+                       A_i, A_j, A_data, d_error_row);
    }
 
+   hypre_TMemcpy(&error_row, d_error_row, HYPRE_Int, 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(d_error_row, HYPRE_MEMORY_DEVICE);
+   if (error_row < hypre_CSRMatrixNumRows(A))
+   {
+      char msg[128];
+      hypre_sprintf(msg, "ILU type 60 zero/nonfinite pivot or result at factorization row %d", error_row);
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
+   }
    hypre_SyncComputeStream();
    HYPRE_ANNOTATE_FUNC_END;
 
@@ -4783,129 +4888,233 @@ hypre_CSRMatrixILU0LevelSetUSolveSingleBlock(hypre_CSRMatrix *A,
  *                            then launch it (first call).
  * graph_data->is_ready == 1: replay the graph directly (subsequent calls).
  *--------------------------------------------------------------------------*/
+/* Graph API errors must be checked, rather than using the generic wrappers
+ * that only assert in Debug. Debug launches run uncaptured, so their conditional
+ * stream synchronization cannot invalidate capture. */
+#if defined(HYPRE_USING_CUDA)
+#define ILU60_GPU_SUCCESS cudaSuccess
+#define ILU60_GPU_BEGIN(s) cudaStreamBeginCapture(s, cudaStreamCaptureModeThreadLocal)
+#define ILU60_GPU_END(s,g) cudaStreamEndCapture(s,g)
+#define ILU60_GPU_INSTANTIATE(e,g) cudaGraphInstantiate(e,g,0)
+#define ILU60_GPU_LAUNCH(e,s) cudaGraphLaunch(e,s)
+#define ILU60_GPU_ERROR() cudaGetLastError()
+#else
+#define ILU60_GPU_SUCCESS hipSuccess
+#define ILU60_GPU_BEGIN(s) hipStreamBeginCapture(s, hipStreamCaptureModeThreadLocal)
+#define ILU60_GPU_END(s,g) hipStreamEndCapture(s,g)
+#define ILU60_GPU_INSTANTIATE(e,g) hipGraphInstantiate(e,g,NULL,NULL,0)
+#define ILU60_GPU_LAUNCH(e,s) hipGraphLaunch(e,s)
+#define ILU60_GPU_ERROR() hipGetLastError()
+#endif
+
+static void
+hypre_ILU60GraphReset(hypre_GPUGraphHandler *g)
+{
+   if (g->graph_exec) { hypre_GraphExecDestroy(g->graph_exec); hypre_ILU60GraphCount(-1); g->graph_exec = NULL; }
+   if (g->graph) { hypre_GraphDestroy(g->graph); hypre_ILU60GraphCount(-1); g->graph = NULL; }
+   g->is_ready = 0;
+}
+
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
-                                       HYPRE_Int        num_low_levels,
-                                       HYPRE_Int       *low_set_offsets,
-                                       HYPRE_Int       *d_low_level_set_rows,
-                                       HYPRE_Complex   *f,
-                                       void            *graph_data_void)
+                                       HYPRE_Int num_low_levels,
+                                       HYPRE_Int *low_set_offsets,
+                                       HYPRE_Int *d_low_level_set_rows,
+                                       HYPRE_Complex *f,
+                                       void *graph_data_void)
 {
-   hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
-   if (!graph_data)
+   hypre_GPUGraphHandler *g = (hypre_GPUGraphHandler *) graph_data_void;
+   HYPRE_Int *A_i = hypre_CSRMatrixI(A), *A_j = hypre_CSRMatrixJ(A);
+   HYPRE_Complex *A_data = hypre_CSRMatrixData(A);
+   auto stream = hypre_HandleComputeStream(hypre_handle());
+   if (!g)
    {
-      // something has gone wrong, raise an error
-      hypre_error_w_msg(HYPRE_ERROR_GENERIC,
-                        "Error: hypre_CSRMatrixILU0LevelSetLSolveGraph called with NULL graph_data.\n");
-      hypre_error_flag = HYPRE_ERROR_GENERIC;
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 missing graph handler");
       return hypre_error_flag;
    }
-
-   /* --- Fast path: replay captured graph -------------------------------- */
-   if (graph_data->is_ready)
+   if (g->is_ready && (g->stream != stream || g->ia != A_i || g->ja != A_j ||
+                       g->values != A_data || g->rows != d_low_level_set_rows || g->rhs != f))
    {
-      hypre_GraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+      hypre_SyncDevice();
+      hypre_ILU60GraphReset(g);
+   }
+   if (g->is_ready)
+   {
+      if (ILU60_GPU_LAUNCH(g->graph_exec, stream) != ILU60_GPU_SUCCESS)
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph replay failed");
+      }
       hypre_SyncComputeStream();
       return hypre_error_flag;
    }
-
-   /* --- First call: capture the kernel-dispatch loop -------------------- */
-   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
-   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
-   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
-   HYPRE_Int       lvl, level_offset, level_set_size;
-   dim3            bDim   = 128;
-
-   hypre_GraphStreamBeginCapture(hypre_HandleComputeStream(hypre_handle()));
-
-   for (lvl = 0; lvl < num_low_levels; lvl++)
+   dim3 bDim = 128;
+   HYPRE_Int capturing = 0, failed = 0;
+#if !defined(HYPRE_DEBUG)
+   capturing = ILU60_GPU_BEGIN(stream) == ILU60_GPU_SUCCESS;
+   if (!capturing) { ILU60_GPU_ERROR(); }
+#endif
+   for (HYPRE_Int lvl = 0; lvl < num_low_levels; lvl++)
    {
-      level_offset   = low_set_offsets[lvl];
-      level_set_size = low_set_offsets[lvl + 1] - level_offset;
-
-      if (level_set_size <= 0) { continue; }
-
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(level_set_size, "thread", bDim);
-
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolve, gDim, bDim,
-                       level_set_size,
-                       d_low_level_set_rows + level_offset,
-                       A_i, A_j, A_data, f);
+      HYPRE_Int offset = low_set_offsets[lvl];
+      HYPRE_Int size = low_set_offsets[lvl+1] - offset;
+      if (!size) { continue; }
+      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
+      if (capturing)
+      {
+         /* Explicit launch omits GPU_LAUNCH_SYNC inside capture. */
+         hypre_DeviceItem item = NULL;
+         hypreGPUKernel_CSRMatrixILU0LevelSetLSolve<<<gDim, bDim, 0, stream>>>
+            (item, size, d_low_level_set_rows + offset, A_i, A_j, A_data, f);
+         failed |= ILU60_GPU_ERROR() != ILU60_GPU_SUCCESS;
+      }
+      else
+      {
+         HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolve, gDim, bDim,
+                          size, d_low_level_set_rows + offset, A_i, A_j, A_data, f);
+      }
    }
-
-   hypre_GraphStreamEndCapture(hypre_HandleComputeStream(hypre_handle()), &graph_data->graph);
-   hypre_GraphInstantiate(&graph_data->graph_exec, graph_data->graph);
-   graph_data->is_ready = 1;
-
-   /* Launch the freshly instantiated graph */
-   hypre_GraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+   if (capturing)
+   {
+      failed |= ILU60_GPU_END(stream, &g->graph) != ILU60_GPU_SUCCESS;
+      if (g->graph) { hypre_ILU60GraphCount(1); }
+      if (!failed)
+      {
+         failed = ILU60_GPU_INSTANTIATE(&g->graph_exec, g->graph) != ILU60_GPU_SUCCESS;
+         if (g->graph_exec) { hypre_ILU60GraphCount(1); }
+      }
+      if (failed)
+      {
+         hypre_ILU60GraphReset(g);
+         ILU60_GPU_ERROR(); /* handled capture failure must not leave a sticky error */
+         /* No captured work executed: safely run the uncaptured substitution. */
+         for (HYPRE_Int lvl = 0; lvl < num_low_levels; lvl++)
+         {
+            HYPRE_Int offset = low_set_offsets[lvl];
+            HYPRE_Int size = low_set_offsets[lvl+1] - offset;
+            if (!size) { continue; }
+            dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
+            HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolve, gDim, bDim,
+                             size, d_low_level_set_rows + offset, A_i, A_j, A_data, f);
+         }
+      }
+      else
+      {
+         g->stream = stream; g->ia = A_i; g->ja = A_j; g->values = A_data;
+         g->rows = d_low_level_set_rows; g->rhs = f;
+         g->is_ready = 1;
+         if (ILU60_GPU_LAUNCH(g->graph_exec, stream) != ILU60_GPU_SUCCESS)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph launch failed");
+         }
+      }
+   }
    hypre_SyncComputeStream();
-
    return hypre_error_flag;
 }
 
-/*--------------------------------------------------------------------------
- * hypre_CSRMatrixILU0LevelSetUSolveGraph  (analogous for the U solve)
- *--------------------------------------------------------------------------*/
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
-                                       HYPRE_Int        num_upp_levels,
-                                       HYPRE_Int       *upp_set_offsets,
-                                       HYPRE_Int       *d_upp_level_set_rows,
-                                       HYPRE_Complex   *f,
-                                       void            *graph_data_void)
+                                       HYPRE_Int num_upp_levels,
+                                       HYPRE_Int *upp_set_offsets,
+                                       HYPRE_Int *d_upp_level_set_rows,
+                                       HYPRE_Complex *f,
+                                       void *graph_data_void)
 {
-   hypre_GPUGraphHandler *graph_data = (hypre_GPUGraphHandler *)graph_data_void;
-   if (!graph_data)
+   hypre_GPUGraphHandler *g = (hypre_GPUGraphHandler *) graph_data_void;
+   HYPRE_Int *A_i = hypre_CSRMatrixI(A), *A_j = hypre_CSRMatrixJ(A);
+   HYPRE_Complex *A_data = hypre_CSRMatrixData(A);
+   auto stream = hypre_HandleComputeStream(hypre_handle());
+   if (!g)
    {
-      // something has gone wrong, raise an error
-      hypre_error_w_msg(HYPRE_ERROR_GENERIC,
-                        "Error: hypre_CSRMatrixILU0LevelSetUSolveGraph called with NULL graph_data.\n");
-      hypre_error_flag = HYPRE_ERROR_GENERIC;
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 missing graph handler");
       return hypre_error_flag;
    }
-
-   /* --- Fast path -------------------------------------------------------- */
-   if (graph_data->is_ready)
+   if (g->is_ready && (g->stream != stream || g->ia != A_i || g->ja != A_j ||
+                       g->values != A_data || g->rows != d_upp_level_set_rows || g->rhs != f))
    {
-      hypre_GraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+      hypre_SyncDevice();
+      hypre_ILU60GraphReset(g);
+   }
+   if (g->is_ready)
+   {
+      if (ILU60_GPU_LAUNCH(g->graph_exec, stream) != ILU60_GPU_SUCCESS)
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph replay failed");
+      }
       hypre_SyncComputeStream();
       return hypre_error_flag;
    }
-
-   /* --- First call: capture ---------------------------------------------- */
-   HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
-   HYPRE_Int      *A_j    = hypre_CSRMatrixJ(A);
-   HYPRE_Complex  *A_data = hypre_CSRMatrixData(A);
-   HYPRE_Int       lvl, level_offset, level_set_size;
-   dim3            bDim   = 128;
-
-   hypre_GraphStreamBeginCapture(hypre_HandleComputeStream(hypre_handle()));
-
-   for (lvl = 0; lvl < num_upp_levels; lvl++)
+   dim3 bDim = 128;
+   HYPRE_Int capturing = 0, failed = 0;
+#if !defined(HYPRE_DEBUG)
+   capturing = ILU60_GPU_BEGIN(stream) == ILU60_GPU_SUCCESS;
+   if (!capturing) { ILU60_GPU_ERROR(); }
+#endif
+   for (HYPRE_Int lvl = 0; lvl < num_upp_levels; lvl++)
    {
-      level_offset   = upp_set_offsets[lvl];
-      level_set_size = upp_set_offsets[lvl + 1] - level_offset;
-
-      if (level_set_size <= 0) { continue; }
-
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(level_set_size, "thread", bDim);
-
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolve, gDim, bDim,
-                       level_set_size,
-                       d_upp_level_set_rows + level_offset,
-                       A_i, A_j, A_data, f);
+      HYPRE_Int offset = upp_set_offsets[lvl];
+      HYPRE_Int size = upp_set_offsets[lvl+1] - offset;
+      if (!size) { continue; }
+      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
+      if (capturing)
+      {
+         /* Explicit launch omits GPU_LAUNCH_SYNC inside capture. */
+         hypre_DeviceItem item = NULL;
+         hypreGPUKernel_CSRMatrixILU0LevelSetUSolve<<<gDim, bDim, 0, stream>>>
+            (item, size, d_upp_level_set_rows + offset, A_i, A_j, A_data, f);
+         failed |= ILU60_GPU_ERROR() != ILU60_GPU_SUCCESS;
+      }
+      else
+      {
+         HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolve, gDim, bDim,
+                          size, d_upp_level_set_rows + offset, A_i, A_j, A_data, f);
+      }
    }
-
-   hypre_GraphStreamEndCapture(hypre_HandleComputeStream(hypre_handle()), &graph_data->graph);
-   hypre_GraphInstantiate(&graph_data->graph_exec, graph_data->graph);
-   graph_data->is_ready = 1;
-
-   hypre_GraphLaunch(graph_data->graph_exec, hypre_HandleComputeStream(hypre_handle()));
+   if (capturing)
+   {
+      failed |= ILU60_GPU_END(stream, &g->graph) != ILU60_GPU_SUCCESS;
+      if (g->graph) { hypre_ILU60GraphCount(1); }
+      if (!failed)
+      {
+         failed = ILU60_GPU_INSTANTIATE(&g->graph_exec, g->graph) != ILU60_GPU_SUCCESS;
+         if (g->graph_exec) { hypre_ILU60GraphCount(1); }
+      }
+      if (failed)
+      {
+         hypre_ILU60GraphReset(g);
+         ILU60_GPU_ERROR(); /* handled capture failure must not leave a sticky error */
+         /* No captured work executed: safely run the uncaptured substitution. */
+         for (HYPRE_Int lvl = 0; lvl < num_upp_levels; lvl++)
+         {
+            HYPRE_Int offset = upp_set_offsets[lvl];
+            HYPRE_Int size = upp_set_offsets[lvl+1] - offset;
+            if (!size) { continue; }
+            dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
+            HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolve, gDim, bDim,
+                             size, d_upp_level_set_rows + offset, A_i, A_j, A_data, f);
+         }
+      }
+      else
+      {
+         g->stream = stream; g->ia = A_i; g->ja = A_j; g->values = A_data;
+         g->rows = d_upp_level_set_rows; g->rhs = f;
+         g->is_ready = 1;
+         if (ILU60_GPU_LAUNCH(g->graph_exec, stream) != ILU60_GPU_SUCCESS)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph launch failed");
+         }
+      }
+   }
    hypre_SyncComputeStream();
-
    return hypre_error_flag;
 }
+
+#undef ILU60_GPU_SUCCESS
+#undef ILU60_GPU_BEGIN
+#undef ILU60_GPU_END
+#undef ILU60_GPU_INSTANTIATE
+#undef ILU60_GPU_LAUNCH
+#undef ILU60_GPU_ERROR
 
 #endif  /* HYPRE_USING_CUDA || HYPRE_USING_HIP */
 

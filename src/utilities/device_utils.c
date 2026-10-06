@@ -15,6 +15,7 @@
  *      NOTE: This includes device openmp for now
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #if defined(HYPRE_USING_GPU)
+#include <atomic>
 
 /*--------------------------------------------------------------------
  * hypre_DeviceDataCreate
@@ -166,6 +167,14 @@ hypre_DeviceDataDestroy(hypre_DeviceData *data)
 /*--------------------------------------------------------------------
  * hypre_SyncDevice
  *--------------------------------------------------------------------*/
+
+/* Internal lifecycle accounting for the ILU60 regression driver. */
+HYPRE_Int
+hypre_ILU60GraphCount(HYPRE_Int delta)
+{
+   static std::atomic<HYPRE_Int> live(0);
+   return live.fetch_add(delta, std::memory_order_relaxed) + delta;
+}
 
 HYPRE_Int
 hypre_SyncDevice()

@@ -2184,6 +2184,7 @@ hypre_Handle* hypre_handle(void);
 hypre_Handle* hypre_HandleCreate(void);
 HYPRE_Int hypre_HandleDestroy(hypre_Handle *hypre_handle_);
 HYPRE_Int hypre_SetDevice(hypre_int device_id, hypre_Handle *hypre_handle_);
+HYPRE_Int hypre_ILU60GraphCount(HYPRE_Int delta);
 HYPRE_Int hypre_GetDevice(hypre_int *device_id);
 HYPRE_Int hypre_GetDeviceCount(hypre_int *device_count);
 HYPRE_Int hypre_GetDeviceLastError(void);

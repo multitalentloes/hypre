@@ -25,6 +25,7 @@ set(TEST_SRCS
   ij_assembly.c
   unit/test_csr_overlap.c
   unit/test_matrix_stats.c
+  test_ilu60.c
 )
 
 # Collect targets derived from source file names
@@ -253,4 +254,9 @@ if(HYPRE_ENABLE_FORTRAN)
   if(HYPRE_ENABLE_MPI)
     target_link_libraries(f77_struct PUBLIC MPI::MPI_Fortran)
   endif()
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME test_ilu60 COMMAND test_ilu60)
+  set_tests_properties(test_ilu60 PROPERTIES SKIP_RETURN_CODE 77 LABELS "ILU;GPU")
 endif()

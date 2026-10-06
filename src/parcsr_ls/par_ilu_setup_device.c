@@ -10,6 +10,64 @@
 
 #if defined(HYPRE_USING_GPU)
 
+/* Validate before constructing schedules or accessing device pivots. Stored
+ * zeros participate in structural symmetry; duplicate columns are unsupported.
+ * Off-diagonal entries are sorted, with the diagonal stored first. */
+static HYPRE_Int
+hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
+{
+   HYPRE_Int n = hypre_CSRMatrixNumRows(A), *ia = hypre_CSRMatrixI(A);
+   HYPRE_Int *ja = hypre_CSRMatrixJ(A);
+   HYPRE_Int lower_entries = 0, upper_entries = 0;
+   *symmetric = 1;
+   if (n != hypre_CSRMatrixNumCols(A) || ia[0] != 0 ||
+       ia[n] != hypre_CSRMatrixNumNonzeros(A))
+   {
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU type 60 requires square valid local CSR");
+      return hypre_error_flag;
+   }
+   for (HYPRE_Int row = 0; row < n; row++)
+   {
+      if (ia[row] < 0 || ia[row] >= ia[row+1] || ia[row+1] > ia[n] || ja[ia[row]] != row)
+      {
+         char msg[128];
+         hypre_sprintf(msg, "ILU type 60 missing diagonal or invalid CSR at factor row %d", row);
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
+         return hypre_error_flag;
+      }
+      for (HYPRE_Int p = ia[row]+1; p < ia[row+1]; p++)
+      {
+         if (ja[p] < 0 || ja[p] >= n || ja[p] == row ||
+             (p > ia[row]+1 && ja[p-1] >= ja[p]))
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC,
+                              "ILU type 60 requires bounded unique columns and sorted off-diagonals");
+            return hypre_error_flag;
+         }
+         lower_entries += ja[p] < row;
+         upper_entries += ja[p] > row;
+      }
+   }
+   if (lower_entries != upper_entries) { *symmetric = 0; return 0; }
+   /* Unique lower entries map injectively to their upper reverses. Equal
+    * cardinalities make that mapping bijective, so checking lower edges alone
+    * proves structural symmetry, including entries whose values are zero. */
+   for (HYPRE_Int row = 0; row < n; row++)
+   {
+      for (HYPRE_Int p = ia[row]+1; p < ia[row+1] && ja[p] < row; p++)
+      {
+         HYPRE_Int col = ja[p], lo = ia[col]+1, hi = ia[col+1];
+         while (lo < hi)
+         {
+            HYPRE_Int mid = lo + (hi-lo)/2;
+            if (ja[mid] < row) { lo = mid+1; } else { hi = mid; }
+         }
+         if (lo == ia[col+1] || ja[lo] != row) { *symmetric = 0; return 0; }
+      }
+   }
+   return 0;
+}
+
 /*--------------------------------------------------------------------------
  * hypre_ILUSetupDevice
  *
@@ -95,6 +153,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
    HYPRE_Int               *uend                = NULL;
 
    /* Local variables */
+   HYPRE_BigInt             big_m               = (HYPRE_BigInt) m;
    HYPRE_BigInt            *send_buf            = NULL;
    hypre_ParCSRCommPkg     *comm_pkg;
    hypre_ParCSRCommHandle  *comm_handle;
@@ -160,6 +219,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
 
       if (ilu_type == 60)
       {
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
          /*
           * Level-set ILU0 factorization on permuted matrix.
           * The factorized matrix is kept in hypre's diagonal-first CSR format
@@ -172,10 +232,18 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_CSRMatrixSortRow(A_diag);
 
          /* Move diagonal to first position in each row (required by level-set kernels) */
-         hypre_CSRMatrixReorder(A_diag);
+         hypre_CSRMatrixMoveDiagFirstOrderedDevice(A_diag);
 
          /* Clone to host for level-set computation (structure only) */
          hypre_CSRMatrix *A_diag_h = hypre_CSRMatrixClone_v2(A_diag, 0, HYPRE_MEMORY_HOST);
+
+         HYPRE_Int symmetric;
+         if (hypre_ILU60CheckStructure(A_diag_h, &symmetric))
+         {
+            hypre_CSRMatrixDestroy(A_diag_h);
+            hypre_CSRMatrixDestroy(A_diag);
+            goto ilu_device_cleanup;
+         }
 
          /* Compute lower and upper level sets on the permuted sparsity structure */
          HYPRE_Int *h_low_set_offsets = NULL;
@@ -209,84 +277,89 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
                                                   h_low_set_offsets, d_low_level_set_rows);
 
-         /* Reorder the factor so rows belonging to the same lower level set are
-          * stored contiguously. The permutation is applied after factorization,
-          * so this changes only storage and vector indexing, not factor values. */
-         HYPRE_Int *d_ls_iperm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
-#if defined(HYPRE_USING_SYCL)
-         hypreSycl_scatter(oneapi::dpl::counting_iterator<HYPRE_Int>(0),
-                           oneapi::dpl::counting_iterator<HYPRE_Int>(num_rows),
-                           d_low_level_set_rows,
-                           d_ls_iperm);
-#else
-         HYPRE_THRUST_CALL(scatter,
-                           thrust::make_counting_iterator(0),
-                           thrust::make_counting_iterator(num_rows),
-                           d_low_level_set_rows,
-                           d_ls_iperm);
-#endif
-
-         /* Remap upper level-set rows into the reordered factor's index space. */
-         HYPRE_Int *d_upp_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
-                                                           HYPRE_MEMORY_DEVICE);
-#if defined(HYPRE_USING_SYCL)
-         hypreSycl_gather(d_upp_level_set_rows, d_upp_level_set_rows + num_rows,
-                          d_ls_iperm, d_upp_level_set_rows_ls);
-#else
-         HYPRE_THRUST_CALL(gather,
-                           d_upp_level_set_rows,
-                           d_upp_level_set_rows + num_rows,
-                           d_ls_iperm,
-                           d_upp_level_set_rows_ls);
-#endif
-         hypre_TFree(d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
-         d_upp_level_set_rows = d_upp_level_set_rows_ls;
-
-         /* Compose the original permutation with the level-set row permutation. */
-         HYPRE_Int *d_combined_perm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
-         if (perm_data)
+         if (hypre_error_flag)
          {
-#if defined(HYPRE_USING_SYCL)
-            hypreSycl_gather(d_low_level_set_rows, d_low_level_set_rows + num_rows,
-                             perm_data, d_combined_perm);
-#else
-            HYPRE_THRUST_CALL(gather,
+            hypre_TFree(h_low_set_offsets, HYPRE_MEMORY_HOST);
+            hypre_TFree(h_upp_set_offsets, HYPRE_MEMORY_HOST);
+            hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
+            hypre_TFree(d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
+            hypre_CSRMatrixDestroy(A_diag);
+            goto ilu_device_cleanup;
+         }
+
+         hypre_CSRMatrix *A_diag_ls = A_diag;
+         HYPRE_Int *d_combined_perm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+         HYPRE_Int *d_ls_iperm = NULL, *d_low_old = NULL, *d_upp_old = NULL;
+         /* Symmetric sparsity guarantees every upper dependency has a reverse
+          * lower edge. Lower-level ordering therefore preserves both triangular
+          * memberships, including stored zeros. Without that reverse edge a
+          * storage permutation can move a U entry below the numeric diagonal. */
+         if (symmetric)
+         {
+            /* Reorder the factor so rows belonging to the same lower level set are
+             * stored contiguously. The permutation is applied after factorization,
+             * so this changes only storage and vector indexing, not factor values. */
+            d_ls_iperm = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+            HYPRE_THRUST_CALL(scatter,
+                              thrust::make_counting_iterator(0),
+                              thrust::make_counting_iterator(num_rows),
                               d_low_level_set_rows,
-                              d_low_level_set_rows + num_rows,
-                              perm_data,
-                              d_combined_perm);
-#endif
+                              d_ls_iperm);
+
+            /* Remap upper level-set rows into the reordered factor's index space. */
+            HYPRE_Int *d_upp_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
+                                                              HYPRE_MEMORY_DEVICE);
+            HYPRE_THRUST_CALL(gather,
+                              d_upp_level_set_rows,
+                              d_upp_level_set_rows + num_rows,
+                              d_ls_iperm,
+                              d_upp_level_set_rows_ls);
+            d_upp_old = d_upp_level_set_rows;
+            d_upp_level_set_rows = d_upp_level_set_rows_ls;
+
+            /* Compose the original permutation with the level-set row permutation. */
+            if (perm_data)
+            {
+               HYPRE_THRUST_CALL(gather,
+                                 d_low_level_set_rows,
+                                 d_low_level_set_rows + num_rows,
+                                 perm_data,
+                                 d_combined_perm);
+            }
+            else
+            {
+               HYPRE_THRUST_CALL(copy, d_low_level_set_rows,
+                                 d_low_level_set_rows + num_rows, d_combined_perm);
+            }
+
+            /* Apply the same row and inverse-column permutation to the factor.
+             * Sorting restores the ordering required by the triangular kernels. */
+            A_diag_ls = NULL;
+            hypre_CSRMatrixPermute(A_diag, d_low_level_set_rows, d_ls_iperm, &A_diag_ls);
+            hypre_CSRMatrixSortRow(A_diag_ls);
+            hypre_CSRMatrixMoveDiagFirstOrderedDevice(A_diag_ls);
+
+            /* Rows are now stored in lower level-set order. */
+            HYPRE_Int *d_low_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
+                                                              HYPRE_MEMORY_DEVICE);
+            HYPRE_THRUST_CALL(sequence, d_low_level_set_rows_ls,
+                              d_low_level_set_rows_ls + num_rows, 0);
+            d_low_old = d_low_level_set_rows;
+            d_low_level_set_rows = d_low_level_set_rows_ls;
+
          }
          else
          {
-#if defined(HYPRE_USING_SYCL)
-            HYPRE_ONEDPL_CALL(std::copy, d_low_level_set_rows,
-                              d_low_level_set_rows + num_rows, d_combined_perm);
-#else
-            HYPRE_THRUST_CALL(copy, d_low_level_set_rows,
-                              d_low_level_set_rows + num_rows, d_combined_perm);
-#endif
+            if (perm_data)
+            {
+               hypre_TMemcpy(d_combined_perm, perm_data, HYPRE_Int, num_rows,
+                             HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
+            }
+            else
+            {
+               HYPRE_THRUST_CALL(sequence, d_combined_perm, d_combined_perm + num_rows, 0);
+            }
          }
-
-         /* Apply the same row and inverse-column permutation to the factor.
-          * Sorting restores the ordering required by the triangular kernels. */
-         hypre_CSRMatrix *A_diag_ls = NULL;
-         hypre_CSRMatrixPermute(A_diag, d_low_level_set_rows, d_ls_iperm, &A_diag_ls);
-         hypre_CSRMatrixSortRow(A_diag_ls);
-         hypre_CSRMatrixReorder(A_diag_ls);
-
-         /* Rows are now stored in lower level-set order. */
-         HYPRE_Int *d_low_level_set_rows_ls = hypre_TAlloc(HYPRE_Int, num_rows,
-                                                           HYPRE_MEMORY_DEVICE);
-#if defined(HYPRE_USING_SYCL)
-         hypreSycl_sequence(d_low_level_set_rows_ls, d_low_level_set_rows_ls + num_rows, 0);
-#else
-         HYPRE_THRUST_CALL(sequence, d_low_level_set_rows_ls,
-                           d_low_level_set_rows_ls + num_rows, 0);
-#endif
-         hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
-         d_low_level_set_rows = d_low_level_set_rows_ls;
-         hypre_TFree(d_ls_iperm, HYPRE_MEMORY_DEVICE);
 
          /* Store level-set data in ilu_data for the solve phase */
          hypre_ParILUDataNumLowLevels(ilu_data)       = low_num_levels;
@@ -330,8 +403,25 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          /* Extract the reordered factorized matrix. With nLU=n (no Schur
           * complement for ilu_type 60), BLU is the full A_diag_ls. */
          hypre_ParILUExtractEBFC(A_diag_ls, nLU, BLUptr, &SLU, Eptr, Fptr);
+         /* Thrust no-sync and HIP D2D copies may still reference the old row
+          * arrays, inverse permutation and factor storage. Pool deallocation
+          * does not wait for them. Synchronize once at the setup boundary. */
+         hypre_ForceSyncComputeStream();
+         hypre_TFree(d_ls_iperm, HYPRE_MEMORY_DEVICE);
+         hypre_TFree(d_low_old, HYPRE_MEMORY_DEVICE);
+         hypre_TFree(d_upp_old, HYPRE_MEMORY_DEVICE);
+         if (A_diag_ls != A_diag) { hypre_CSRMatrixDestroy(A_diag_ls); }
          hypre_CSRMatrixDestroy(A_diag);
-         hypre_CSRMatrixDestroy(A_diag_ls);
+         if (hypre_ParILUDataPrintLevel(ilu_data) > 1)
+         {
+            hypre_printf("ILU60 factor levels L=%d U=%d max_width=%d symmetric_storage=%d single_block=%d\n",
+                         low_num_levels, upp_num_levels, max_level_set_size, symmetric,
+                         ilu_data->ls_use_single_block);
+         }
+#else
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU type 60 requires CUDA/HIP device execution");
+         goto ilu_device_cleanup;
+#endif
       }
       else
       {
@@ -410,8 +500,19 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
       SLU = NULL;
    }
 
+   /* Type 60 is block Jacobi (nLU == n) and never forms a Schur block.
+    * Both successful/empty ranks and rank-local factorization failures return
+    * to the same outer failure reduction; an extra Schur reduction here would
+    * mismatch that reduction when only one rank fails. */
+   if (ilu_type == 60)
+   {
+      hypre_CSRMatrixDestroy(SLU);
+      *matSptr = NULL;
+      goto ilu_device_cleanup;
+   }
+
    /* Compute total rows in Schur block */
-   HYPRE_BigInt big_m = (HYPRE_BigInt) m;
+
    hypre_MPI_Allreduce(&big_m, &total_rows, 1, HYPRE_MPI_BIG_INT, hypre_MPI_SUM, comm);
 
    /* only form when total_rows > 0 */
@@ -566,6 +667,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
    /* Set output pointer */
    *matSptr = matS;
 
+ilu_device_cleanup:
    /* Do not free perm_data/qperm_data */
    if (perm)
    {

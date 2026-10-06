@@ -151,6 +151,52 @@ hypre_ILUCreate( void )
  * hypre_ILUDestroy
  *--------------------------------------------------------------------------*/
 
+#if defined(HYPRE_USING_GPU)
+/* Called before factors and scratch vectors are freed. Synchronization is paid
+ * only at rebuild/destruction, never during steady-state application. */
+HYPRE_Int
+hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data)
+{
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   if (ilu_data->ls_graph_L || ilu_data->ls_graph_U || ilu_data->combined_perm_d)
+   {
+      hypre_SyncDevice();
+   }
+   hypre_GPUGraphHandler *graphs[2] = {
+      (hypre_GPUGraphHandler *) ilu_data->ls_graph_L,
+      (hypre_GPUGraphHandler *) ilu_data->ls_graph_U};
+   for (HYPRE_Int i = 0; i < 2; i++)
+   {
+      if (graphs[i])
+      {
+         if (graphs[i]->graph_exec)
+         {
+            hypre_GraphExecDestroy(graphs[i]->graph_exec);
+            hypre_ILU60GraphCount(-1);
+         }
+         if (graphs[i]->graph)
+         {
+            hypre_GraphDestroy(graphs[i]->graph);
+            hypre_ILU60GraphCount(-1);
+         }
+         hypre_TFree(graphs[i], HYPRE_MEMORY_HOST);
+      }
+   }
+   ilu_data->ls_graph_L = ilu_data->ls_graph_U = NULL;
+#endif
+   hypre_TFree(ilu_data->low_level_set_offsets, HYPRE_MEMORY_HOST);
+   hypre_TFree(ilu_data->upp_level_set_offsets, HYPRE_MEMORY_HOST);
+   hypre_TFree(ilu_data->d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(ilu_data->d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(ilu_data->combined_perm_d, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(ilu_data->d_low_level_set_offsets, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(ilu_data->d_upp_level_set_offsets, HYPRE_MEMORY_DEVICE);
+   ilu_data->num_low_levels = ilu_data->num_upp_levels = 0;
+   ilu_data->ls_use_single_block = ilu_data->ls_max_level_set_size = ilu_data->ls_ready = 0;
+   return hypre_error_flag;
+}
+#endif
+
 HYPRE_Int
 hypre_ILUDestroy( void *data )
 {
@@ -172,6 +218,7 @@ hypre_ILUDestroy( void *data )
 
       /* GPU additional data */
 #if defined(HYPRE_USING_GPU)
+      hypre_ILULevelSetCleanup(ilu_data);
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataAperm(ilu_data) );
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataR(ilu_data) );
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataP(ilu_data) );
@@ -185,36 +232,6 @@ hypre_ILUDestroy( void *data )
       hypre_SeqVectorDestroy( hypre_ParILUDataUTempLower(ilu_data) );
       hypre_SeqVectorDestroy( hypre_ParILUDataADiagDiag(ilu_data) );
       hypre_SeqVectorDestroy( hypre_ParILUDataSDiagDiag(ilu_data) );
-
-      hypre_TFree( hypre_ParILUDataLowLevelSetOffsets(ilu_data),   HYPRE_MEMORY_HOST );
-      hypre_TFree( hypre_ParILUDataDLowLevelSetRows(ilu_data),     HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataUppLevelSetOffsets(ilu_data),   HYPRE_MEMORY_HOST );
-      hypre_TFree( hypre_ParILUDataDUppLevelSetRows(ilu_data),     HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataCombinedPermD(ilu_data),        HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataDLowLevelSetOffsets(ilu_data),  HYPRE_MEMORY_DEVICE );
-      hypre_TFree( hypre_ParILUDataDUppLevelSetOffsets(ilu_data),  HYPRE_MEMORY_DEVICE );
-
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
-      /* Destroy captured GPU graphs for level-set triangular solves */
-      {
-         hypre_GPUGraphHandler *gL = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphL(ilu_data);
-         hypre_GPUGraphHandler *gU = (hypre_GPUGraphHandler *)hypre_ParILUDataLSGraphU(ilu_data);
-         if (gL && gL->is_ready)
-         {
-            hypre_GraphExecDestroy(gL->graph_exec);
-            hypre_GraphDestroy(gL->graph);
-         }
-         hypre_TFree(gL, HYPRE_MEMORY_HOST);
-         hypre_ParILUDataLSGraphL(ilu_data) = NULL;
-         if (gU && gU->is_ready)
-         {
-            hypre_GraphExecDestroy(gU->graph_exec);
-            hypre_GraphDestroy(gU->graph);
-         }
-         hypre_TFree(gU, HYPRE_MEMORY_HOST);
-         hypre_ParILUDataLSGraphU(ilu_data) = NULL;
-      }
-#endif
 #endif
 
       /* final residual vector */
@@ -460,6 +477,9 @@ hypre_ILUSetType( void      *ilu_vdata,
       hypre_ParILUDataSchurPrecond(ilu_data) = NULL;
    }
 
+#if defined(HYPRE_USING_GPU)
+   if (ilu_type == 60 || hypre_ParILUDataIluType(ilu_data) == 60) { ilu_data->ls_ready = 0; }
+#endif
    hypre_ParILUDataIluType(ilu_data) = ilu_type;
 
    /* reset default value, not a large cost

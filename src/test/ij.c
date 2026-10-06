@@ -666,10 +666,11 @@ main( hypre_int argc,
       return 0;
    }
 
+   /* Timer allocation can use Umpire and therefore needs the hypre handle.
+    * Initialize first, keeping device initialization below inside the timer. */
+   HYPRE_Initialize();
    time_index = hypre_InitializeTiming("Hypre init");
    hypre_BeginTiming(time_index);
-
-   HYPRE_Initialize();
 
    /* We set the execution policy early so that hypre_EndTiming
       knows whether to call hypre_DeviceSync or not. */

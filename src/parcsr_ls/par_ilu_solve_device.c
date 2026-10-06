@@ -1270,18 +1270,20 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    HYPRE_Complex  alpha = -1.0;
    HYPRE_Complex  beta  =  1.0;
 
-   /* Sanity check */
-   if (num_rows == 0)
-   {
-      return hypre_error_flag;
-   }
-
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    HYPRE_ANNOTATE_FUNC_BEGIN;
    hypre_GpuProfilingPushRange("ILUSolveLevelSet");
 
    /* Compute residual: ftemp = f - A*u */
    hypre_ParCSRMatrixMatvecOutOfPlace(alpha, A, u, beta, f, ftemp);
+
+   /* Empty ranks still participate in residual communication. */
+   if (num_rows == 0)
+   {
+      hypre_GpuProfilingPopRange();
+      HYPRE_ANNOTATE_FUNC_END;
+      return hypre_error_flag;
+   }
 
    /* Apply permutation: the factorization was computed on the permuted matrix,
     * so we must permute the residual into the same ordering before the solves. */
@@ -1307,8 +1309,18 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
    {
       hypre_CSRMatrixILU0LevelSetLSolveGraph(matLU_d, num_low_levels, low_set_offsets,
                                              d_low_set_rows, utemp_data, graph_L_data);
-      hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
-                                             d_upp_set_rows, utemp_data, graph_U_data);
+      if (!hypre_error_flag)
+      {
+         hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
+                                              d_upp_set_rows, utemp_data, graph_U_data);
+      }
+   }
+
+   if (hypre_error_flag)
+   {
+      hypre_GpuProfilingPopRange();
+      HYPRE_ANNOTATE_FUNC_END;
+      return hypre_error_flag;
    }
 
    /* Apply reverse permutation: scatter correction back to original ordering */

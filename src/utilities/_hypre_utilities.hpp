@@ -745,11 +745,14 @@ struct hypre_GPUGraphHandler
 #if defined(HYPRE_USING_CUDA)
    cudaGraph_t     graph;
    cudaGraphExec_t graph_exec;
+   cudaStream_t    stream;
 #else  /* HIP */
    hipGraph_t      graph;
    hipGraphExec_t  graph_exec;
+   hipStream_t     stream;
 #endif
-   HYPRE_Int       is_ready; /* 0 = not yet captured, 1 = ready for replay */
+   HYPRE_Int       is_ready; /* published only after successful instantiation */
+   const void     *ia, *ja, *values, *rows, *rhs; /* captured pointer identity */
 };
 
 #if defined(HYPRE_USING_CUDA)
