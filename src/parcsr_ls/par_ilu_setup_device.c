@@ -18,7 +18,6 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
 {
    HYPRE_Int n = hypre_CSRMatrixNumRows(A), *ia = hypre_CSRMatrixI(A);
    HYPRE_Int *ja = hypre_CSRMatrixJ(A);
-   HYPRE_Int lower_entries = 0, upper_entries = 0;
    *symmetric = 1;
    if (n != hypre_CSRMatrixNumCols(A) || ia[0] != 0 ||
        ia[n] != hypre_CSRMatrixNumNonzeros(A))
@@ -26,6 +25,7 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
       hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU type 60 requires square valid local CSR");
       return hypre_error_flag;
    }
+   HYPRE_Int *next_upper = hypre_TAlloc(HYPRE_Int, n, HYPRE_MEMORY_HOST);
    for (HYPRE_Int row = 0; row < n; row++)
    {
       if (ia[row] < 0 || ia[row] >= ia[row+1] || ia[row+1] > ia[n] || ja[ia[row]] != row)
@@ -33,45 +33,51 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
          char msg[128];
          hypre_sprintf(msg, "ILU type 60 missing diagonal or invalid CSR at factor row %d", row);
          hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
+         hypre_TFree(next_upper, HYPRE_MEMORY_HOST);
          return hypre_error_flag;
       }
+      next_upper[row] = ia[row] + 1;
       for (HYPRE_Int p = ia[row]+1; p < ia[row+1]; p++)
       {
-         if (ja[p] < 0 || ja[p] >= n || ja[p] == row ||
-             (p > ia[row]+1 && ja[p-1] >= ja[p]))
+         HYPRE_Int col = ja[p];
+         if (col < 0 || col >= n || col == row ||
+             (p > ia[row]+1 && ja[p-1] >= col))
          {
             hypre_error_w_msg(HYPRE_ERROR_GENERIC,
                               "ILU type 60 requires bounded unique columns and sorted off-diagonals");
+            hypre_TFree(next_upper, HYPRE_MEMORY_HOST);
             return hypre_error_flag;
          }
-         lower_entries += ja[p] < row;
-         upper_entries += ja[p] > row;
+         if (col < row)
+         {
+            /* Sorted off-diagonals put all lower entries before the upper
+             * suffix. Its cursor is ready when a later row visits this row. */
+            next_upper[row]++;
+            if (*symmetric)
+            {
+               /* Every lower neighbor is an earlier, fully validated row.
+                * Reverse upper edges arrive in ascending order, so validation
+                * and symmetry matching can share this single CSR traversal. */
+               HYPRE_Int reverse = next_upper[col];
+               if (reverse == ia[col + 1] || ja[reverse] != row)
+               {
+                  *symmetric = 0;
+               }
+               else
+               {
+                  next_upper[col]++;
+               }
+            }
+         }
       }
    }
-   if (lower_entries != upper_entries) { *symmetric = 0; return 0; }
-   HYPRE_Int *next_upper = hypre_TAlloc(HYPRE_Int, n, HYPRE_MEMORY_HOST);
-   for (HYPRE_Int row = 0; row < n; row++)
-   {
-      HYPRE_Int p = ia[row] + 1;
-      while (p < ia[row + 1] && ja[p] < row) { p++; }
-      next_upper[row] = p;
-   }
-   /* Lower edges are visited in ascending row order. The reverse edges in
-    * each sorted upper row must appear in exactly that order, so one cursor
-    * per row replaces the binary search for every reverse edge. Equal edge
-    * counts make this injection a bijection, including stored zeros. */
+   /* Matched lower edges form an injection into the upper edges. Exhausting
+    * every upper cursor also rules out unmatched upper edges, without an
+    * additional CSR traversal or relying on equal edge counts. Continue all
+    * structural validation above even after discovering asymmetry. */
    for (HYPRE_Int row = 0; row < n && *symmetric; row++)
    {
-      for (HYPRE_Int p = ia[row] + 1; p < ia[row + 1] && ja[p] < row; p++)
-      {
-         HYPRE_Int col = ja[p], reverse = next_upper[col];
-         if (reverse == ia[col + 1] || ja[reverse] != row)
-         {
-            *symmetric = 0;
-            break;
-         }
-         next_upper[col]++;
-      }
+      if (next_upper[row] != ia[row + 1]) { *symmetric = 0; }
    }
    hypre_TFree(next_upper, HYPRE_MEMORY_HOST);
    return 0;
@@ -281,7 +287,8 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          HYPRE_Int  low_num_levels, upp_num_levels, max_level_set_size;
 
          HYPRE_ANNOTATE_REGION_BEGIN("ILU60HostLevels");
-         hypre_CSRMatrixComputeLevelSetsHost(A_diag_h,
+         (symmetric ? hypre_CSRMatrixComputeLevelSetsSymmetricHost :
+                      hypre_CSRMatrixComputeLevelSetsOrderedHost)(A_diag_h,
                                              &h_low_set_offsets, &h_low_level_sets,
                                              &h_upp_set_offsets, &h_upp_level_sets,
                                              &low_num_levels,    &upp_num_levels,
@@ -302,14 +309,23 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_TFree(h_low_level_sets, HYPRE_MEMORY_HOST);
          hypre_TFree(h_upp_level_sets, HYPRE_MEMORY_HOST);
 
+         /* Factorization batches reuse the owned lower offsets needed by the
+          * solves. Allocate once here and transfer ownership after success. */
+         HYPRE_Int *d_low_set_offsets = hypre_TAlloc(HYPRE_Int, low_num_levels + 1,
+                                                     HYPRE_MEMORY_DEVICE);
+         hypre_TMemcpy(d_low_set_offsets, h_low_set_offsets, HYPRE_Int, low_num_levels + 1,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+
          /* Run level-set ILU0 factorization on the permuted device matrix */
          HYPRE_ANNOTATE_REGION_BEGIN("ILU60Factorization");
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
-                                                  h_low_set_offsets, d_low_level_set_rows);
+                                                  h_low_set_offsets, d_low_set_offsets,
+                                                  d_low_level_set_rows);
          HYPRE_ANNOTATE_REGION_END("ILU60Factorization");
 
          if (hypre_error_flag)
          {
+            hypre_TFree(d_low_set_offsets, HYPRE_MEMORY_DEVICE);
             hypre_TFree(h_low_set_offsets, HYPRE_MEMORY_HOST);
             hypre_TFree(h_upp_set_offsets, HYPRE_MEMORY_HOST);
             hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
@@ -423,13 +439,9 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
              max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK / solve_group_size);
 
          {
-            HYPRE_Int *d_low_set_offsets = hypre_TAlloc(HYPRE_Int, low_num_levels + 1,
-                                                        HYPRE_MEMORY_DEVICE);
             HYPRE_Int *d_upp_set_offsets = hypre_TAlloc(HYPRE_Int, upp_num_levels + 1,
                                                         HYPRE_MEMORY_DEVICE);
 
-            hypre_TMemcpy(d_low_set_offsets, h_low_set_offsets, HYPRE_Int, low_num_levels + 1,
-                          HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
             hypre_TMemcpy(d_upp_set_offsets, h_upp_set_offsets, HYPRE_Int, upp_num_levels + 1,
                           HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
 

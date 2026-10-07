@@ -104,6 +104,20 @@ HYPRE_Int
 hypre_CSRMatrixComputeLevelSetsHost_long_dbl( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
 
 HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost_flt( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost_dbl( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost_long_dbl( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost_flt( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost_dbl( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost_long_dbl( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size );
+
+HYPRE_Int
 hypre_CSRMatrixComputeRowSum_flt( hypre_CSRMatrix *A, HYPRE_Int *CF_i, HYPRE_Int *CF_j, hypre_float *row_sum, HYPRE_Int type, hypre_float scal, const char *set_or_add );
 HYPRE_Int
 hypre_CSRMatrixComputeRowSum_dbl( hypre_CSRMatrix *A, HYPRE_Int *CF_i, HYPRE_Int *CF_j, hypre_double *row_sum, HYPRE_Int type, hypre_double scal, const char *set_or_add );

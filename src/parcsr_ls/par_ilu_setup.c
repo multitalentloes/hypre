@@ -25,16 +25,43 @@ hypre_ILU60CompareColumn(const void *a, const void *b)
 static HYPRE_Int
 hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
 {
-   hypre_CSRMatrix *h = hypre_CSRMatrixClone_v2(A, 0, HYPRE_MEMORY_HOST);
-   HYPRE_Int n = hypre_CSRMatrixNumRows(h), nnz = hypre_CSRMatrixNumNonzeros(h);
-   HYPRE_Int *ia = hypre_CSRMatrixI(h), *ja = hypre_CSRMatrixJ(h);
-   HYPRE_Int bad = n != hypre_CSRMatrixNumCols(h) || ia[0] != 0 || ia[n] != nnz;
+   HYPRE_Int n = hypre_CSRMatrixNumRows(A), nnz = hypre_CSRMatrixNumNonzeros(A);
+   HYPRE_MemoryLocation memory_location = hypre_CSRMatrixMemoryLocation(A);
+   if (n < 0 || nnz < 0 || n != hypre_CSRMatrixNumCols(A) ||
+       !hypre_CSRMatrixI(A) || (nnz && !hypre_CSRMatrixJ(A)))
+   {
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 requires square valid local CSR");
+      return 1;
+   }
+   /* Validation reads only row offsets and columns. Clone_v2(copy_data=0)
+    * also allocates and zeroes an unused nnz-sized numeric array, then zeroes
+    * the structure arrays that the following copies immediately overwrite. */
+   HYPRE_Int *ia = hypre_TAlloc(HYPRE_Int, (size_t) n + 1, HYPRE_MEMORY_HOST);
+   HYPRE_Int *ja = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST);
+   if (!ia || (nnz && !ja))
+   {
+      hypre_TFree(ia, HYPRE_MEMORY_HOST);
+      hypre_TFree(ja, HYPRE_MEMORY_HOST);
+      hypre_error_w_msg(HYPRE_ERROR_MEMORY, "ILU60 input validation structure allocation failed");
+      return 1;
+   }
+   hypre_TMemcpy(ia, hypre_CSRMatrixI(A), HYPRE_Int, (size_t) n + 1,
+                 HYPRE_MEMORY_HOST, memory_location);
+   if (nnz)
+   {
+      hypre_TMemcpy(ja, hypre_CSRMatrixJ(A), HYPRE_Int, nnz,
+                    HYPRE_MEMORY_HOST, memory_location);
+   }
+   HYPRE_Int bad = ia[0] != 0 || ia[n] != nnz;
    HYPRE_Int *columns = NULL;
    for (HYPRE_Int row = 0; row < n && !bad; row++)
    {
-      HYPRE_Int diag = 0, size = ia[row+1] - ia[row];
+      HYPRE_Int diag = 0, size;
       HYPRE_Int ordered = 1, previous = -1;
-      if (ia[row] < 0 || size <= 0 || ia[row+1] > nnz) { bad = 1; break; }
+      /* Bound both offsets before subtracting: a negative interior endpoint
+       * can otherwise overflow even after a valid positive row prefix. */
+      if (ia[row] < 0 || ia[row+1] <= ia[row] || ia[row+1] > nnz) { bad = 1; break; }
+      size = ia[row+1] - ia[row];
       for (HYPRE_Int p = ia[row]; p < ia[row+1]; p++)
       {
          bad |= ja[p] < 0 || ja[p] >= n;
@@ -52,7 +79,16 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
        * uniqueness without sorting. Retain the general unordered-row check. */
       if (!bad && !ordered)
       {
-         if (!columns) { columns = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST); }
+         if (!columns)
+         {
+            columns = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST);
+            if (!columns)
+            {
+               hypre_error_w_msg(HYPRE_ERROR_MEMORY, "ILU60 input validation column allocation failed");
+               bad = 1;
+               break;
+            }
+         }
          for (HYPRE_Int p = 0; p < size; p++) { columns[p] = ja[ia[row]+p]; }
          qsort(columns, size, sizeof(HYPRE_Int), hypre_ILU60CompareColumn);
          for (HYPRE_Int p = 1; p < size; p++) { bad |= columns[p-1] == columns[p]; }
@@ -65,7 +101,8 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
       }
    }
    hypre_TFree(columns, HYPRE_MEMORY_HOST);
-   hypre_CSRMatrixDestroy(h);
+   hypre_TFree(ia, HYPRE_MEMORY_HOST);
+   hypre_TFree(ja, HYPRE_MEMORY_HOST);
    return bad;
 }
 #endif
@@ -202,7 +239,9 @@ hypre_ILUSetup( void               *ilu_vdata,
                            "ILU type 60 requires device execution, fill=0, direct solves and noniterative setup");
          return hypre_error_flag;
       }
+      HYPRE_ANNOTATE_REGION_BEGIN("ILU60ValidateInput");
       HYPRE_Int invalid = hypre_ILU60ValidateInput(hypre_ParCSRMatrixDiag(A)), any_invalid;
+      HYPRE_ANNOTATE_REGION_END("ILU60ValidateInput");
       hypre_MPI_Allreduce(&invalid, &any_invalid, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
       if (any_invalid)
       {

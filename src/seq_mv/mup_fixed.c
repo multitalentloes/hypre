@@ -109,6 +109,16 @@ hypre_CSRMatrixComputeLevelSetsHost( hypre_CSRMatrix *A, HYPRE_Int **low_set_off
 {
    return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixComputeLevelSetsHost)( A, low_set_offsets, low_level_sets, upp_set_offsets, upp_level_sets, num_low_levels, num_upp_levels, max_level_set_size );
 }
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size )
+{
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixComputeLevelSetsOrderedHost)( A, low_set_offsets, low_level_sets, upp_set_offsets, upp_level_sets, num_low_levels, num_upp_levels, max_level_set_size );
+}
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost( hypre_CSRMatrix *A, HYPRE_Int **low_set_offsets, HYPRE_Int **low_level_sets, HYPRE_Int **upp_set_offsets, HYPRE_Int **upp_level_sets, HYPRE_Int *num_low_levels, HYPRE_Int *num_upp_levels, HYPRE_Int *max_level_set_size )
+{
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixComputeLevelSetsSymmetricHost)( A, low_set_offsets, low_level_sets, upp_set_offsets, upp_level_sets, num_low_levels, num_upp_levels, max_level_set_size );
+}
 
 /*--------------------------------------------------------------------------*/
 

@@ -179,6 +179,49 @@ static size_t live_allocations(void)
 #endif
 }
 
+/* Sparse levels of widths 2,1,1,1 form one scalar factor batch. A failed
+ * middle-level row must not strand inactive threads at a block barrier, leak
+ * the early-owned offsets, or prevent a later setup on the same solver. */
+static void factor_batch_ownership(void)
+{
+   HYPRE_Solver solver;
+   double a[25] = {1, 0, 1, 0, 0,
+                   0, 4, 0, 0, 0,
+                   1, 0, 4, .02, 0,
+                   0, 0, .01, 4, .02,
+                   0, 0, 0, .01, 4};
+   int mask[25] = {1, 0, 1, 0, 0,
+                   0, 1, 0, 0, 0,
+                   1, 0, 1, 1, 0,
+                   0, 0, 1, 1, 1,
+                   0, 0, 0, 1, 1};
+   size_t before, stable;
+   int rep;
+   HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
+   HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
+   run(solver, 5, a, mask, 0, 0, 74126);
+   a[12] = 1; /* Exactly zero after eliminating the row-0 unit pivot. */
+   run(solver, 5, a, mask, 0, 1, 74127);
+   HYPRE_ILUDestroy(solver);
+   before = live_allocations();
+   HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
+   HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
+   run(solver, 5, a, mask, 0, 1, 74128);
+   stable = live_allocations();
+   for (rep = 0; rep < 16; rep++)
+   {
+      run(solver, 5, a, mask, 0, 1, 74129 + rep);
+      check(live_allocations() == stable, "failed factor batch releases early offsets", 5, rep);
+   }
+   a[12] = NAN;
+   run(solver, 5, a, mask, 0, 1, 74146);
+   check(live_allocations() == stable, "nonfinite factor batch releases early offsets", 5, 0);
+   a[12] = 4;
+   run(solver, 5, a, mask, 0, 0, 74147);
+   HYPRE_ILUDestroy(solver);
+   check(live_allocations() == before, "factor batch recovery destruction returns allocations", 5, 0);
+}
+
 static void ownership(void)
 {
    HYPRE_Solver solver;
@@ -542,8 +585,13 @@ static void invalid_structure(HYPRE_Solver solver)
 {
    double a[9] = {4, 1, 1, 0, 4, 0, 0, 0, 4}; int mask[9] = {1, 1, 1, 0, 1, 0, 0, 0, 1};
    int issue;
-   for (issue = 0; issue < 3; issue++)
+   for (issue = 0; issue < 4; issue++)
    {
+      if (issue == 3)
+      {
+         mask[1] = mask[2] = 0; a[1] = a[2] = 0;
+         mask[3] = 1; a[3] = .1;
+      }
       hypre_ParCSRMatrix *A = matrix(3, a, mask);
       hypre_CSRMatrix *D = hypre_ParCSRMatrixDiag(A);
       hypre_ParVector *b = vector(3), *u = vector(3);
@@ -551,7 +599,10 @@ static void invalid_structure(HYPRE_Solver solver)
       if (issue < 2)
          hypre_TMemcpy(hypre_CSRMatrixJ(D) + 2, &column, HYPRE_Int, 1,
                        HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
-      else { hypre_CSRMatrixNumCols(D) = 4; }
+      else if (issue == 2) { hypre_CSRMatrixNumCols(D) = 4; }
+      else
+         hypre_TMemcpy(hypre_CSRMatrixJ(D) + hypre_CSRMatrixNumNonzeros(D) - 1,
+                       &column, HYPRE_Int, 1, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
       check(HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix)A, (HYPRE_ParVector)b,
                            (HYPRE_ParVector)u) != 0, "invalid structure rejected before permutation", 3, issue);
       HYPRE_ClearAllErrors();
@@ -559,6 +610,34 @@ static void invalid_structure(HYPRE_Solver solver)
                            (HYPRE_ParVector)u) != 0, "invalid structure leaves solve disabled", 3, issue);
       HYPRE_ClearAllErrors();
       hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
+   }
+   /* Malformed CSR offsets must fail before a device permutation can use
+    * them as addresses. A successful setup/solve after each rejection also
+    * verifies that invalid structure leaves no stale usable factor state. */
+   for (issue = 0; issue < 4; issue++)
+   {
+      hypre_ParCSRMatrix *A = matrix(3, a, mask);
+      hypre_CSRMatrix *D = hypre_ParCSRMatrixDiag(A);
+      hypre_ParVector *b = vector(3), *u = vector(3);
+      HYPRE_Int n = hypre_CSRMatrixNumRows(D);
+      HYPRE_Int nnz = hypre_CSRMatrixNumNonzeros(D);
+      HYPRE_Int index = issue == 0 ? 0 : (issue == 1 ? n : (issue == 2 ? 1 : 2));
+      HYPRE_Int offset = issue == 0 ? 1 : (issue == 1 ? nnz - 1 :
+                                              (issue == 2 ? nnz + 1 : HYPRE_INT_MIN));
+      /* Last case retains a valid first row and positive ia[1], then makes
+       * ia[2] negative: subtraction before bounds checking would overflow. */
+      hypre_TMemcpy(hypre_CSRMatrixI(D) + index, &offset, HYPRE_Int, 1,
+                    HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+      check(HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix)A, (HYPRE_ParVector)b,
+                           (HYPRE_ParVector)u) != 0,
+            "invalid CSR row offsets rejected before permutation", 3, 66026u + issue);
+      HYPRE_ClearAllErrors();
+      check(HYPRE_ILUSolve(solver, (HYPRE_ParCSRMatrix)A, (HYPRE_ParVector)b,
+                           (HYPRE_ParVector)u) != 0,
+            "invalid CSR row offsets leave solve disabled", 3, 66026u + issue);
+      HYPRE_ClearAllErrors();
+      hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
+      run(solver, 3, a, mask, 0, 0, 66026u + issue);
    }
    run(solver, 3, a, mask, 0, 0, 18);
 }
@@ -789,6 +868,22 @@ static int test_main(int argc, char **argv)
       }
    }
    {
+      /* Equal lower/upper counts do not imply matching reverse edges. Also
+       * test the unmatched-upper exhaustion and unmatched-lower paths. */
+      int issue, ordering;
+      for (issue = 0; issue < 3; issue++)
+      {
+         double a[16] = {4, 0, 0, 0, 0, 4, 0, 0, 0, 0, 4, 0, 0, 0, 0, 4};
+         int mask[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+         if (issue != 2) { mask[1] = 1; a[1] = .2; }
+         if (issue != 1) { mask[8] = 1; a[8] = .1; }
+         for (ordering = 0; ordering < 2; ordering++)
+         {
+            run(solver, 4, a, mask, ordering, 0, 65026 + issue);
+         }
+      }
+   }
+   {
       /* Unsorted unique rows must retain the scalar oracle result, including
        * after RCM. These rows take the validation sorting fallback. */
       double a[16] = {4, .2, .1, .3, -.1, 4, .2, 0,
@@ -885,24 +980,40 @@ static int test_main(int argc, char **argv)
       }
    }
    {
-      /* Lower and upper levels have widths 1,1,129,1,1. This exercises a
-       * narrow batch on each side of a level requiring multiple blocks. */
-      int n = 133, i;
-      double *a = (double *) calloc(n * n, sizeof(double));
-      int *mask = (int *) calloc(n * n, sizeof(int));
-      for (i = 0; i < n; i++) { a[i * n + i] = 8; mask[i * n + i] = 1; }
-      mask[1] = mask[n] = mask[131 * n + 132] = mask[132 * n + 131] = 1;
-      a[1] = a[131 * n + 132] = .02;
-      a[n] = a[132 * n + 131] = .01;
-      for (i = 2; i <= 130; i++)
+      /* Both schedules have widths 1,1,w,1,1. Scalar factor and graph solve
+       * batches must cover levels wider than 128 threads through the legal
+       * single-block limit; an oversized level separates narrower batches. */
+      int widths[] = {128, 129, 256, 512, 1023, 1024, 1025}, w;
+      for (w = 0; w < 7; w++)
       {
-         mask[n + i] = mask[i * n + 1] = 1;
-         a[n + i] = .02; a[i * n + 1] = .01;
-         mask[i * n + 131] = mask[131 * n + i] = 1;
-         a[i * n + 131] = .02; a[131 * n + i] = .01;
+         int n = widths[w] + 4, i;
+         double *a = (double *) calloc(n * n, sizeof(double));
+         int *mask = (int *) calloc(n * n, sizeof(int));
+         for (i = 0; i < n; i++) { a[i * n + i] = 8; mask[i * n + i] = 1; }
+         mask[1] = mask[n] = mask[(n - 2) * n + n - 1] = mask[(n - 1) * n + n - 2] = 1;
+         a[1] = a[(n - 2) * n + n - 1] = .02;
+         a[n] = a[(n - 1) * n + n - 2] = .01;
+         for (i = 2; i < n - 2; i++)
+         {
+            mask[n + i] = mask[i * n + 1] = 1;
+            a[n + i] = .02; a[i * n + 1] = .01;
+            mask[i * n + n - 2] = mask[(n - 2) * n + i] = 1;
+            a[i * n + n - 2] = .02; a[(n - 2) * n + i] = .01;
+         }
+         run(solver, n, a, mask, 0, 0, 72826 + w);
+         /* Invalid pivot inside a batch, including schedules interrupted by
+          * the 1025-row wide level, must complete without barrier deadlock. */
+         if (w == 0 || w == 6)
+         {
+            a[0] = a[n + 1] = a[1] = a[n] = 1;
+            run(solver, n, a, mask, 0, 1, 72926 + w);
+            a[n + 1] = NAN;
+            run(solver, n, a, mask, 0, 1, 73026 + w);
+            a[0] = a[n + 1] = 8; a[1] = .02; a[n] = .01;
+            run(solver, n, a, mask, 0, 0, 73126 + w);
+         }
+         free(a); free(mask);
       }
-      run(solver, n, a, mask, 0, 0, 72826);
-      free(a); free(mask);
    }
    {
       double a[4] = {1, 1, 1, 1}; int mask[4] = {1, 1, 1, 1};
@@ -942,6 +1053,7 @@ static int test_main(int argc, char **argv)
    ordered_diagonal();
 #endif
    ownership();
+   factor_batch_ownership();
    HYPRE_Finalize();
 #else
    HYPRE_Init();

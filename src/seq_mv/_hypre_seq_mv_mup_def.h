@@ -65,6 +65,8 @@
 #define hypre_CSRMatrixComputeColSum HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeColSum )
 #define hypre_CSRMatrixComputeColSumHost HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeColSumHost )
 #define hypre_CSRMatrixComputeLevelSetsHost HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeLevelSetsHost )
+#define hypre_CSRMatrixComputeLevelSetsOrderedHost HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeLevelSetsOrderedHost )
+#define hypre_CSRMatrixComputeLevelSetsSymmetricHost HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeLevelSetsSymmetricHost )
 #define hypre_CSRMatrixComputeRowSum HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeRowSum )
 #define hypre_CSRMatrixComputeRowSumHost HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixComputeRowSumHost )
 #define hypre_CSRMatrixDeleteZeros HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixDeleteZeros )

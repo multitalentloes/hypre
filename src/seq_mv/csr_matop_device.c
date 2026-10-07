@@ -4485,24 +4485,13 @@ hypreGPUKernel_CSRMatrixILU0UpperStarts(hypre_DeviceItem &item,
    upper_starts[row] = first;
 }
 
-__global__ void
-hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
-                                              HYPRE_Int          level_set_size,
-                                              HYPRE_Int         *level_set_rows,
-                                              HYPRE_Int         *A_i,
-                                              HYPRE_Int         *A_j,
-                                              HYPRE_Complex     *A_data,
-                                              HYPRE_Int         *upper_starts,
-                                              HYPRE_Int         *error_row)
+/* One scalar row. Returns are local to this helper so batched kernels always
+ * reach the level barrier, including after zero/nonfinite pivot rejection. */
+static __device__ __forceinline__ void
+hypre_ILU60FactorRow(HYPRE_Int row, HYPRE_Int *A_i, HYPRE_Int *A_j,
+                     HYPRE_Complex *A_data, HYPRE_Int *upper_starts,
+                     HYPRE_Int *error_row)
 {
-   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
-   if (tid >= level_set_size)
-   {
-      return;
-   }
-
-   /* Each thread processes one row from the current level set */
-   const HYPRE_Int row       = level_set_rows[tid];
    const HYPRE_Int row_start = A_i[row];
    const HYPRE_Int row_end   = A_i[row + 1];
 
@@ -4578,6 +4567,49 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem  &item,
       A_data[row_start] = 0;
    }
 
+}
+
+__global__ void
+hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem &item,
+                                            HYPRE_Int level_set_size,
+                                            HYPRE_Int *level_set_rows,
+                                            HYPRE_Int *A_i, HYPRE_Int *A_j,
+                                            HYPRE_Complex *A_data,
+                                            HYPRE_Int *upper_starts,
+                                            HYPRE_Int *error_row)
+{
+   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (tid < level_set_size)
+   {
+      hypre_ILU60FactorRow(level_set_rows[tid], A_i, A_j, A_data,
+                           upper_starts, error_row);
+   }
+}
+
+/* Every level in this bounded batch fits the one block. Synchronizing all
+ * threads orders predecessor factor writes before the next dependent level. */
+__global__ void
+hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock(hypre_DeviceItem &item,
+                                                       HYPRE_Int num_levels,
+                                                       HYPRE_Int *level_set_offsets,
+                                                       HYPRE_Int *level_set_rows,
+                                                       HYPRE_Int *A_i, HYPRE_Int *A_j,
+                                                       HYPRE_Complex *A_data,
+                                                       HYPRE_Int *upper_starts,
+                                                       HYPRE_Int *error_row)
+{
+   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_thread_id<1>(item);
+   for (HYPRE_Int lvl = 0; lvl < num_levels; lvl++)
+   {
+      const HYPRE_Int offset = level_set_offsets[lvl];
+      const HYPRE_Int size = level_set_offsets[lvl + 1] - offset;
+      if (tid < size)
+      {
+         hypre_ILU60FactorRow(level_set_rows[offset + tid], A_i, A_j, A_data,
+                              upper_starts, error_row);
+      }
+      __syncthreads();
+   }
 }
 
 #if defined(HYPRE_USING_CUDA) || \
@@ -4674,15 +4706,36 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeWarp(hypre_DeviceItem &item,
 }
 #endif
 
+/* Consecutive levels that fit in one block can share a kernel. Scalar
+ * batches use the full legal block capacity and size the block to their
+ * widest level. Block synchronization preserves the dependency order. */
+static HYPRE_Int
+hypre_ILU60SingleBlockBatchEnd(HYPRE_Int *offsets, HYPRE_Int first,
+                             HYPRE_Int num_levels, HYPRE_Int block_size,
+                             HYPRE_Int *max_width)
+{
+   HYPRE_Int end = first + 1;
+   *max_width = offsets[end] - offsets[first];
+   if (*max_width > block_size) { return end; }
+   while (end < num_levels && offsets[end + 1] - offsets[end] <= block_size)
+   {
+      *max_width = hypre_max(*max_width, offsets[end + 1] - offsets[end]);
+      end++;
+   }
+   return end;
+}
+
+
 /*--------------------------------------------------------------------------
  * Computes an in-place ILU0 factorization on the GPU by exploiting
- * level-set parallelism. Serial exeuction of one kernel per level-set.
+ * level-set parallelism. Consecutive narrow sparse-row levels share a block.
  *
  * Parameters:
  *   A                    - square CSR matrix on the device (modified in-place)
  *   num_low_levels       - number of lower level sets
  *   low_set_offsets      - host array, length (num_low_levels + 1); entry l is
  *                          the start index into d_low_level_set_rows for level l
+ *   d_low_set_offsets   - owned device copy of low_set_offsets, reused by solves
  *   d_low_level_set_rows - device array of length num_rows: row indices grouped
  *                          by lower level set
  *--------------------------------------------------------------------------*/
@@ -4691,6 +4744,7 @@ HYPRE_Int
 hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
                                          HYPRE_Int        num_low_levels,
                                          HYPRE_Int       *low_set_offsets,
+                                         HYPRE_Int       *d_low_set_offsets,
                                          HYPRE_Int       *d_low_level_set_rows)
 {
    HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
@@ -4706,6 +4760,7 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
    dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
 
    HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A);
+   const HYPRE_Int batch_sparse_factor = num_rows && hypre_CSRMatrixNumNonzeros(A) / num_rows < 32;
 #if defined(HYPRE_USING_CUDA) || \
     (defined(HYPRE_USING_HIP) && HIP_VERSION >= 60500000 && !defined(HIP_DISABLE_WARP_SYNC_BUILTINS))
    const HYPRE_Int use_cooperative_factor = num_rows && hypre_CSRMatrixNumNonzeros(A) / num_rows >= 32;
@@ -4729,6 +4784,25 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
       if (level_set_size <= 0)
       {
          continue;
+      }
+
+      /* Batch only levels that already fit one default scalar block. Wider
+       * levels retain their original multiple-block row parallelism. */
+      if (batch_sparse_factor)
+      {
+         HYPRE_Int max_width;
+         const HYPRE_Int end = hypre_ILU60SingleBlockBatchEnd(low_set_offsets, lvl,
+                                 num_low_levels, (HYPRE_Int) bDim.x, &max_width);
+         if (end > lvl + 1)
+         {
+            dim3 batchDim(max_width, 1, 1);
+            HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock,
+                             dim3(1), batchDim, end - lvl, d_low_set_offsets + lvl,
+                             d_low_level_set_rows, A_i, A_j, A_data,
+                             d_upper_starts, d_error_row);
+            lvl = end - 1;
+            continue;
+         }
       }
 
 #if defined(HYPRE_USING_CUDA) || \
@@ -5102,20 +5176,6 @@ hypre_ILU60GraphReset(hypre_GPUGraphHandler *g)
    g->is_ready = 0;
 }
 
-/* Consecutive levels that already occupy one graph block can share a
- * kernel. Block synchronization preserves their original dependency order. */
-static HYPRE_Int
-hypre_ILU60SingleBlockBatchEnd(HYPRE_Int *offsets, HYPRE_Int first,
-                             HYPRE_Int num_levels, HYPRE_Int block_size)
-{
-   HYPRE_Int end = first + 1;
-   if (offsets[end] - offsets[first] > block_size) { return end; }
-   while (end < num_levels && offsets[end + 1] - offsets[end] <= block_size)
-   {
-      end++;
-   }
-   return end;
-}
 
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
@@ -5153,6 +5213,7 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
    dim3 bDim = 128;
    const HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A);
    const HYPRE_Int group_size = num_rows && hypre_CSRMatrixNumNonzeros(A) / num_rows >= 32 ? 8 : 1;
+   const HYPRE_Int batch_capacity = group_size == 1 ? HYPRE_MAX_NTHREADS_BLOCK : bDim.x / group_size;
    HYPRE_Int capturing = 0, failed = 0;
 #if !defined(HYPRE_DEBUG)
    capturing = ILU60_GPU_BEGIN(stream) == ILU60_GPU_SUCCESS;
@@ -5160,9 +5221,10 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
 #endif
    for (HYPRE_Int lvl = 0; lvl < num_low_levels;)
    {
-      HYPRE_Int first = lvl;
+      HYPRE_Int first = lvl, max_width;
       lvl = hypre_ILU60SingleBlockBatchEnd(low_set_offsets, first,
-                                          num_low_levels, bDim.x / group_size);
+                                          num_low_levels, batch_capacity, &max_width);
+      dim3 batchDim(group_size == 1 ? hypre_max(max_width, 1) : bDim.x);
       HYPRE_Int offset = low_set_offsets[first];
       HYPRE_Int size = low_set_offsets[first+1] - offset;
       if (!size && lvl == first + 1) { continue; }
@@ -5175,13 +5237,13 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
          {
             if (group_size == 8)
             {
-               hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<8><<<dim3(1), bDim, 0, stream>>>
+               hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<8><<<dim3(1), batchDim, 0, stream>>>
                   (item, lvl - first, d_low_set_offsets + first,
                    d_low_level_set_rows, A_i, A_j, A_data, f);
             }
             else
             {
-               hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<1><<<dim3(1), bDim, 0, stream>>>
+               hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<1><<<dim3(1), batchDim, 0, stream>>>
                   (item, lvl - first, d_low_set_offsets + first,
                    d_low_level_set_rows, A_i, A_j, A_data, f);
             }
@@ -5208,13 +5270,13 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
             if (group_size == 8)
             {
                HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<8>,
-                                dim3(1), bDim, lvl - first, d_low_set_offsets + first,
+                                dim3(1), batchDim, lvl - first, d_low_set_offsets + first,
                                 d_low_level_set_rows, A_i, A_j, A_data, f);
             }
             else
             {
                HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<1>,
-                                dim3(1), bDim, lvl - first, d_low_set_offsets + first,
+                                dim3(1), batchDim, lvl - first, d_low_set_offsets + first,
                                 d_low_level_set_rows, A_i, A_j, A_data, f);
             }
          }
@@ -5249,9 +5311,10 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
          /* No captured work executed: safely run the uncaptured substitution. */
          for (HYPRE_Int lvl = 0; lvl < num_low_levels;)
          {
-            HYPRE_Int first = lvl;
+            HYPRE_Int first = lvl, max_width;
             lvl = hypre_ILU60SingleBlockBatchEnd(low_set_offsets, first,
-                                                num_low_levels, bDim.x / group_size);
+                                                num_low_levels, batch_capacity, &max_width);
+            dim3 batchDim(group_size == 1 ? hypre_max(max_width, 1) : bDim.x);
             HYPRE_Int offset = low_set_offsets[first];
             HYPRE_Int size = low_set_offsets[first+1] - offset;
             if (!size && lvl == first + 1) { continue; }
@@ -5261,13 +5324,13 @@ hypre_CSRMatrixILU0LevelSetLSolveGraph(hypre_CSRMatrix *A,
                if (group_size == 8)
                {
                   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<8>,
-                                   dim3(1), bDim, lvl - first, d_low_set_offsets + first,
+                                   dim3(1), batchDim, lvl - first, d_low_set_offsets + first,
                                    d_low_level_set_rows, A_i, A_j, A_data, f);
                }
                else
                {
                   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetLSolveSingleBlock<1>,
-                                   dim3(1), bDim, lvl - first, d_low_set_offsets + first,
+                                   dim3(1), batchDim, lvl - first, d_low_set_offsets + first,
                                    d_low_level_set_rows, A_i, A_j, A_data, f);
                }
             }
@@ -5337,6 +5400,7 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
    dim3 bDim = 128;
    const HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A);
    const HYPRE_Int group_size = num_rows && hypre_CSRMatrixNumNonzeros(A) / num_rows >= 32 ? 8 : 1;
+   const HYPRE_Int batch_capacity = group_size == 1 ? HYPRE_MAX_NTHREADS_BLOCK : bDim.x / group_size;
    HYPRE_Int capturing = 0, failed = 0;
 #if !defined(HYPRE_DEBUG)
    capturing = ILU60_GPU_BEGIN(stream) == ILU60_GPU_SUCCESS;
@@ -5344,9 +5408,10 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
 #endif
    for (HYPRE_Int lvl = 0; lvl < num_upp_levels;)
    {
-      HYPRE_Int first = lvl;
+      HYPRE_Int first = lvl, max_width;
       lvl = hypre_ILU60SingleBlockBatchEnd(upp_set_offsets, first,
-                                          num_upp_levels, bDim.x / group_size);
+                                          num_upp_levels, batch_capacity, &max_width);
+      dim3 batchDim(group_size == 1 ? hypre_max(max_width, 1) : bDim.x);
       HYPRE_Int offset = upp_set_offsets[first];
       HYPRE_Int size = upp_set_offsets[first+1] - offset;
       if (!size && lvl == first + 1) { continue; }
@@ -5359,13 +5424,13 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
          {
             if (group_size == 8)
             {
-               hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<8><<<dim3(1), bDim, 0, stream>>>
+               hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<8><<<dim3(1), batchDim, 0, stream>>>
                   (item, lvl - first, d_upp_set_offsets + first,
                    d_upp_level_set_rows, A_i, A_j, A_data, f);
             }
             else
             {
-               hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<1><<<dim3(1), bDim, 0, stream>>>
+               hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<1><<<dim3(1), batchDim, 0, stream>>>
                   (item, lvl - first, d_upp_set_offsets + first,
                    d_upp_level_set_rows, A_i, A_j, A_data, f);
             }
@@ -5392,13 +5457,13 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
             if (group_size == 8)
             {
                HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<8>,
-                                dim3(1), bDim, lvl - first, d_upp_set_offsets + first,
+                                dim3(1), batchDim, lvl - first, d_upp_set_offsets + first,
                                 d_upp_level_set_rows, A_i, A_j, A_data, f);
             }
             else
             {
                HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<1>,
-                                dim3(1), bDim, lvl - first, d_upp_set_offsets + first,
+                                dim3(1), batchDim, lvl - first, d_upp_set_offsets + first,
                                 d_upp_level_set_rows, A_i, A_j, A_data, f);
             }
          }
@@ -5433,9 +5498,10 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
          /* No captured work executed: safely run the uncaptured substitution. */
          for (HYPRE_Int lvl = 0; lvl < num_upp_levels;)
          {
-            HYPRE_Int first = lvl;
+            HYPRE_Int first = lvl, max_width;
             lvl = hypre_ILU60SingleBlockBatchEnd(upp_set_offsets, first,
-                                                num_upp_levels, bDim.x / group_size);
+                                                num_upp_levels, batch_capacity, &max_width);
+            dim3 batchDim(group_size == 1 ? hypre_max(max_width, 1) : bDim.x);
             HYPRE_Int offset = upp_set_offsets[first];
             HYPRE_Int size = upp_set_offsets[first+1] - offset;
             if (!size && lvl == first + 1) { continue; }
@@ -5445,13 +5511,13 @@ hypre_CSRMatrixILU0LevelSetUSolveGraph(hypre_CSRMatrix *A,
                if (group_size == 8)
                {
                   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<8>,
-                                   dim3(1), bDim, lvl - first, d_upp_set_offsets + first,
+                                   dim3(1), batchDim, lvl - first, d_upp_set_offsets + first,
                                    d_upp_level_set_rows, A_i, A_j, A_data, f);
                }
                else
                {
                   HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetUSolveSingleBlock<1>,
-                                   dim3(1), bDim, lvl - first, d_upp_set_offsets + first,
+                                   dim3(1), batchDim, lvl - first, d_upp_set_offsets + first,
                                    d_upp_level_set_rows, A_i, A_j, A_data, f);
                }
             }

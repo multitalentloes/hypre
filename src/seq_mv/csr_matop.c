@@ -2507,15 +2507,17 @@ hypre_CSRMatrixTaggedFnorm(hypre_CSRMatrix  *A,
  * and standard ascending-sorted CSR produce identical results.
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int
-hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
+static HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsHostCore(hypre_CSRMatrix  *A,
                                     HYPRE_Int       **low_set_offsets_ptr,
                                     HYPRE_Int       **low_level_sets_ptr,
                                     HYPRE_Int       **upp_set_offsets_ptr,
                                     HYPRE_Int       **upp_level_sets_ptr,
                                     HYPRE_Int        *num_levels_low_ptr,
                                     HYPRE_Int        *num_levels_upp_ptr,
-                                    HYPRE_Int        *max_level_set_size)
+                                    HYPRE_Int        *max_level_set_size,
+                                    HYPRE_Int         reverse_upper,
+                                    HYPRE_Int         ordered)
 {
    HYPRE_Int   num_rows = hypre_CSRMatrixNumRows(A);
    HYPRE_Int  *A_i = hypre_CSRMatrixI(A), *A_j = hypre_CSRMatrixJ(A);
@@ -2528,43 +2530,88 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
    for (HYPRE_Int upper = 0; upper < 2; upper++)
    {
       HYPRE_Int num_levels = 1;
-      for (HYPRE_Int step = 0; step < num_rows; step++)
+      HYPRE_Int *offsets, *rows;
+      if (reverse_upper && upper)
       {
-         HYPRE_Int row = upper ? num_rows - 1 - step : step;
-         HYPRE_Int level = 0;
-         for (HYPRE_Int j = A_i[row]; j < A_i[row + 1]; j++)
+         /* Structural symmetry reverses every lower dependency into an upper
+          * dependency. Copy lower cohorts in reverse order, preserving stable
+          * row order without another histogram or row-level traversal. */
+         num_levels = *num_levels_low_ptr;
+         HYPRE_Int *low_offsets = *low_set_offsets_ptr;
+         HYPRE_Int *low_rows = *low_level_sets_ptr;
+         offsets = hypre_TAlloc(HYPRE_Int, num_levels + 1, HYPRE_MEMORY_HOST);
+         rows = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_HOST);
+         offsets[0] = 0;
+         for (HYPRE_Int level = 0; level < num_levels; level++)
          {
-            HYPRE_Int col = A_j[j];
-            if (upper ? col > row : col < row)
+            HYPRE_Int low_level = num_levels - 1 - level;
+            HYPRE_Int width = low_offsets[low_level + 1] - low_offsets[low_level];
+            offsets[level + 1] = offsets[level] + width;
+            if (width > 0)
             {
-               level = hypre_max(level, row_level[col] + 1);
+               memcpy(rows + offsets[level], low_rows + low_offsets[low_level],
+                      (size_t) width * sizeof(HYPRE_Int));
             }
          }
-         row_level[row] = level;
-         num_levels = hypre_max(num_levels, level + 1);
+         /* The copied upper cohorts have the same maximum width as lower. */
       }
+      else
+      {
+         for (HYPRE_Int step = 0; step < num_rows; step++)
+         {
+            HYPRE_Int row = upper ? num_rows - 1 - step : step;
+            HYPRE_Int level = 0;
+            if (ordered && upper)
+            {
+               for (HYPRE_Int j = A_i[row + 1] - 1; j >= A_i[row] && A_j[j] > row; j--)
+               {
+                  level = hypre_max(level, row_level[A_j[j]] + 1);
+               }
+            }
+            else if (ordered)
+            {
+               for (HYPRE_Int j = A_i[row] + 1; j < A_i[row + 1] && A_j[j] < row; j++)
+               {
+                  level = hypre_max(level, row_level[A_j[j]] + 1);
+               }
+            }
+            else
+            {
+               for (HYPRE_Int j = A_i[row]; j < A_i[row + 1]; j++)
+               {
+                  HYPRE_Int col = A_j[j];
+                  if (upper ? col > row : col < row)
+                  {
+                     level = hypre_max(level, row_level[col] + 1);
+                  }
+               }
+            }
+            row_level[row] = level;
+            num_levels = hypre_max(num_levels, level + 1);
+         }
 
-      HYPRE_Int *positions = hypre_CTAlloc(HYPRE_Int, num_levels, HYPRE_MEMORY_HOST);
-      HYPRE_Int *offsets = hypre_TAlloc(HYPRE_Int, num_levels + 1, HYPRE_MEMORY_HOST);
-      HYPRE_Int *rows = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_HOST);
-      for (HYPRE_Int row = 0; row < num_rows; row++)
-      {
-         positions[row_level[row]]++;
+         HYPRE_Int *positions = hypre_CTAlloc(HYPRE_Int, num_levels, HYPRE_MEMORY_HOST);
+         offsets = hypre_TAlloc(HYPRE_Int, num_levels + 1, HYPRE_MEMORY_HOST);
+         rows = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_HOST);
+         for (HYPRE_Int row = 0; row < num_rows; row++)
+         {
+            positions[row_level[row]]++;
+         }
+         offsets[0] = 0;
+         for (HYPRE_Int level = 0; level < num_levels; level++)
+         {
+            HYPRE_Int width = positions[level];
+            offsets[level + 1] = offsets[level] + width;
+            *max_level_set_size = hypre_max(*max_level_set_size, width);
+            /* The histogram is no longer needed; reuse it as insertion cursors. */
+            positions[level] = offsets[level];
+         }
+         for (HYPRE_Int row = 0; row < num_rows; row++)
+         {
+            rows[positions[row_level[row]]++] = row;
+         }
+         hypre_TFree(positions, HYPRE_MEMORY_HOST);
       }
-      offsets[0] = 0;
-      for (HYPRE_Int level = 0; level < num_levels; level++)
-      {
-         HYPRE_Int width = positions[level];
-         offsets[level + 1] = offsets[level] + width;
-         *max_level_set_size = hypre_max(*max_level_set_size, width);
-         /* The histogram is no longer needed; reuse it as insertion cursors. */
-         positions[level] = offsets[level];
-      }
-      for (HYPRE_Int row = 0; row < num_rows; row++)
-      {
-         rows[positions[row_level[row]]++] = row;
-      }
-      hypre_TFree(positions, HYPRE_MEMORY_HOST);
 
 #ifdef DEBUG_LVLSET
       FILE *fp = fopen("level_sets.txt", upper ? "a" : "w");
@@ -2599,4 +2646,55 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
    }
    hypre_TFree(row_level, HYPRE_MEMORY_HOST);
    return hypre_error_flag;
+}
+
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
+                                    HYPRE_Int       **low_set_offsets_ptr,
+                                    HYPRE_Int       **low_level_sets_ptr,
+                                    HYPRE_Int       **upp_set_offsets_ptr,
+                                    HYPRE_Int       **upp_level_sets_ptr,
+                                    HYPRE_Int        *num_levels_low_ptr,
+                                    HYPRE_Int        *num_levels_upp_ptr,
+                                    HYPRE_Int        *max_level_set_size)
+{
+   return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
+                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                        num_levels_low_ptr, num_levels_upp_ptr,
+                                                        max_level_set_size, 0, 0);
+}
+
+/* Requires validated diagonal-first CSR with sorted off-diagonals and
+ * structurally symmetric storage, including stored zeros. */
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost(hypre_CSRMatrix  *A,
+                                    HYPRE_Int       **low_set_offsets_ptr,
+                                    HYPRE_Int       **low_level_sets_ptr,
+                                    HYPRE_Int       **upp_set_offsets_ptr,
+                                    HYPRE_Int       **upp_level_sets_ptr,
+                                    HYPRE_Int        *num_levels_low_ptr,
+                                    HYPRE_Int        *num_levels_upp_ptr,
+                                    HYPRE_Int        *max_level_set_size)
+{
+   return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
+                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                        num_levels_low_ptr, num_levels_upp_ptr,
+                                                        max_level_set_size, 1, 1);
+}
+
+/* Requires validated diagonal-first CSR with sorted off-diagonals. */
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost(hypre_CSRMatrix  *A,
+                                    HYPRE_Int       **low_set_offsets_ptr,
+                                    HYPRE_Int       **low_level_sets_ptr,
+                                    HYPRE_Int       **upp_set_offsets_ptr,
+                                    HYPRE_Int       **upp_level_sets_ptr,
+                                    HYPRE_Int        *num_levels_low_ptr,
+                                    HYPRE_Int        *num_levels_upp_ptr,
+                                    HYPRE_Int        *max_level_set_size)
+{
+   return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
+                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                        num_levels_low_ptr, num_levels_upp_ptr,
+                                                        max_level_set_size, 0, 1);
 }

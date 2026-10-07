@@ -363,6 +363,24 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
                                     HYPRE_Int        *num_low_levels,
                                     HYPRE_Int        *num_upp_levels,
                                     HYPRE_Int        *max_level_set_size);
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsOrderedHost(hypre_CSRMatrix  *A,
+                                    HYPRE_Int       **low_set_offsets,
+                                    HYPRE_Int       **low_level_sets,
+                                    HYPRE_Int       **upp_set_offsets,
+                                    HYPRE_Int       **upp_level_sets,
+                                    HYPRE_Int        *num_low_levels,
+                                    HYPRE_Int        *num_upp_levels,
+                                    HYPRE_Int        *max_level_set_size);
+HYPRE_Int
+hypre_CSRMatrixComputeLevelSetsSymmetricHost(hypre_CSRMatrix  *A,
+                                    HYPRE_Int       **low_set_offsets,
+                                    HYPRE_Int       **low_level_sets,
+                                    HYPRE_Int       **upp_set_offsets,
+                                    HYPRE_Int       **upp_level_sets,
+                                    HYPRE_Int        *num_low_levels,
+                                    HYPRE_Int        *num_upp_levels,
+                                    HYPRE_Int        *max_level_set_size);
 
 /* csr_matop_device.c */
 hypre_CSRMatrix *hypre_CSRMatrixAddDevice ( HYPRE_Complex alpha, hypre_CSRMatrix *A,
@@ -650,6 +668,7 @@ HYPRE_Int hypre_CSRMatrixSpMVAnalysisDevice(hypre_CSRMatrix *matrix);
 HYPRE_Int hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
                                                    HYPRE_Int        num_low_levels,
                                                    HYPRE_Int       *low_set_offsets,
+                                                   HYPRE_Int       *d_low_set_offsets,
                                                    HYPRE_Int       *d_low_level_set_rows);
 HYPRE_Int hypre_CSRMatrixILU0LevelSetLSolveSingleBlock(hypre_CSRMatrix *A,
                                                        HYPRE_Int        num_low_levels,
