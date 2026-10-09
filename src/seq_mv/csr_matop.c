@@ -2509,15 +2509,15 @@ hypre_CSRMatrixTaggedFnorm(hypre_CSRMatrix  *A,
 
 static HYPRE_Int
 hypre_CSRMatrixComputeLevelSetsHostCore(hypre_CSRMatrix  *A,
-                                    HYPRE_Int       **low_set_offsets_ptr,
-                                    HYPRE_Int       **low_level_sets_ptr,
-                                    HYPRE_Int       **upp_set_offsets_ptr,
-                                    HYPRE_Int       **upp_level_sets_ptr,
-                                    HYPRE_Int        *num_levels_low_ptr,
-                                    HYPRE_Int        *num_levels_upp_ptr,
-                                    HYPRE_Int        *max_level_set_size,
-                                    HYPRE_Int         reverse_upper,
-                                    HYPRE_Int         ordered)
+                                        HYPRE_Int       **low_set_offsets_ptr,
+                                        HYPRE_Int       **low_level_sets_ptr,
+                                        HYPRE_Int       **upp_set_offsets_ptr,
+                                        HYPRE_Int       **upp_level_sets_ptr,
+                                        HYPRE_Int        *num_levels_low_ptr,
+                                        HYPRE_Int        *num_levels_upp_ptr,
+                                        HYPRE_Int        *max_level_set_size,
+                                        HYPRE_Int         reverse_upper,
+                                        HYPRE_Int         ordered)
 {
    HYPRE_Int   num_rows = hypre_CSRMatrixNumRows(A);
    HYPRE_Int  *A_i = hypre_CSRMatrixI(A), *A_j = hypre_CSRMatrixJ(A);
@@ -2613,24 +2613,6 @@ hypre_CSRMatrixComputeLevelSetsHostCore(hypre_CSRMatrix  *A,
          hypre_TFree(positions, HYPRE_MEMORY_HOST);
       }
 
-#ifdef DEBUG_LVLSET
-      FILE *fp = fopen("level_sets.txt", upper ? "a" : "w");
-      if (fp)
-      {
-         fprintf(fp, "Number of %s levels: %d\n", upper ? "upper" : "lower", num_levels);
-         for (HYPRE_Int level = 0; level < num_levels; level++)
-         {
-            fprintf(fp, "%s level %d (size %d): ", upper ? "Upper" : "Lower",
-                    level, offsets[level + 1] - offsets[level]);
-            for (HYPRE_Int j = offsets[level]; j < offsets[level + 1]; j++)
-            {
-               fprintf(fp, "%d ", rows[j]);
-            }
-            fprintf(fp, "\n");
-         }
-         fclose(fp);
-      }
-#endif
       if (upper)
       {
          *num_levels_upp_ptr = num_levels;
@@ -2659,42 +2641,42 @@ hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix  *A,
                                     HYPRE_Int        *max_level_set_size)
 {
    return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
-                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
-                                                        num_levels_low_ptr, num_levels_upp_ptr,
-                                                        max_level_set_size, 0, 0);
+                                                  upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                  num_levels_low_ptr, num_levels_upp_ptr,
+                                                  max_level_set_size, 0, 0);
 }
 
 /* Requires validated diagonal-first CSR with sorted off-diagonals and
  * structurally symmetric storage, including stored zeros. */
 HYPRE_Int
 hypre_CSRMatrixComputeLevelSetsSymmetricHost(hypre_CSRMatrix  *A,
-                                    HYPRE_Int       **low_set_offsets_ptr,
-                                    HYPRE_Int       **low_level_sets_ptr,
-                                    HYPRE_Int       **upp_set_offsets_ptr,
-                                    HYPRE_Int       **upp_level_sets_ptr,
-                                    HYPRE_Int        *num_levels_low_ptr,
-                                    HYPRE_Int        *num_levels_upp_ptr,
-                                    HYPRE_Int        *max_level_set_size)
+                                             HYPRE_Int       **low_set_offsets_ptr,
+                                             HYPRE_Int       **low_level_sets_ptr,
+                                             HYPRE_Int       **upp_set_offsets_ptr,
+                                             HYPRE_Int       **upp_level_sets_ptr,
+                                             HYPRE_Int        *num_levels_low_ptr,
+                                             HYPRE_Int        *num_levels_upp_ptr,
+                                             HYPRE_Int        *max_level_set_size)
 {
    return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
-                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
-                                                        num_levels_low_ptr, num_levels_upp_ptr,
-                                                        max_level_set_size, 1, 1);
+                                                  upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                  num_levels_low_ptr, num_levels_upp_ptr,
+                                                  max_level_set_size, 1, 1);
 }
 
 /* Requires validated diagonal-first CSR with sorted off-diagonals. */
 HYPRE_Int
 hypre_CSRMatrixComputeLevelSetsOrderedHost(hypre_CSRMatrix  *A,
-                                    HYPRE_Int       **low_set_offsets_ptr,
-                                    HYPRE_Int       **low_level_sets_ptr,
-                                    HYPRE_Int       **upp_set_offsets_ptr,
-                                    HYPRE_Int       **upp_level_sets_ptr,
-                                    HYPRE_Int        *num_levels_low_ptr,
-                                    HYPRE_Int        *num_levels_upp_ptr,
-                                    HYPRE_Int        *max_level_set_size)
+                                           HYPRE_Int       **low_set_offsets_ptr,
+                                           HYPRE_Int       **low_level_sets_ptr,
+                                           HYPRE_Int       **upp_set_offsets_ptr,
+                                           HYPRE_Int       **upp_level_sets_ptr,
+                                           HYPRE_Int        *num_levels_low_ptr,
+                                           HYPRE_Int        *num_levels_upp_ptr,
+                                           HYPRE_Int        *max_level_set_size)
 {
    return hypre_CSRMatrixComputeLevelSetsHostCore(A, low_set_offsets_ptr, low_level_sets_ptr,
-                                                        upp_set_offsets_ptr, upp_level_sets_ptr,
-                                                        num_levels_low_ptr, num_levels_upp_ptr,
-                                                        max_level_set_size, 0, 1);
+                                                  upp_set_offsets_ptr, upp_level_sets_ptr,
+                                                  num_levels_low_ptr, num_levels_upp_ptr,
+                                                  max_level_set_size, 0, 1);
 }

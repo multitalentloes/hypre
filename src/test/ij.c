@@ -666,11 +666,10 @@ main( hypre_int argc,
       return 0;
    }
 
-   /* Timer allocation can use Umpire and therefore needs the hypre handle.
-    * Initialize first, keeping device initialization below inside the timer. */
-   HYPRE_Initialize();
    time_index = hypre_InitializeTiming("Hypre init");
    hypre_BeginTiming(time_index);
+
+   HYPRE_Initialize();
 
    /* We set the execution policy early so that hypre_EndTiming
       knows whether to call hypre_DeviceSync or not. */
@@ -2992,8 +2991,7 @@ main( hypre_int argc,
          hypre_printf("  -ilu_type   40                   : ddPQ + GMRES with ILU(k) variants \n");
          hypre_printf("  -ilu_type   41                   : ddPQ + GMRES with ILUT \n");
          hypre_printf("  -ilu_type   50                   : GMRES with ILU(0): RAP variant with MILU(0)  \n");
-         hypre_printf("  -ilu_type   60                   : ILU0 with level-sets \n"); // TODO: add more variants or add new options
-         hypre_printf("  -ilu_type   70                   : DILU with level-sets \n"); // TODO: add more variants or add new options
+         hypre_printf("  -ilu_type   60                   : BJ with device level-set ILU0 (CUDA/HIP) \n");
          hypre_printf("  -ilu_lfil   <val>                : set level of fill (k) for ILU(k) = val\n");
          hypre_printf("  -ilu_droptol   <val>             : set drop tolerance threshold for ILUT = val \n");
          hypre_printf("  -ilu_max_row_nnz   <val>         : set max. num of nonzeros to keep per row = val \n");

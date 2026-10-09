@@ -141,6 +141,11 @@ A short explanation for each of those functions and its parameters is given next
 Device level-set ILU0 (type 60)
 ------------------------------------------------------------------------------
 
+Type 60 complements type 0 for large sparse local blocks with short rows and
+broad dependency levels. It uses one GPU thread per row; type 0 remains
+available for other sparsity patterns. There is no automatic selection between
+the two implementations.
+
 Type 60 factors each local diagonal block and applies direct triangular solves
 using dependency levels. It supports CUDA and HIP device execution; it does not
 support CPU or SYCL execution. Configure it with zero fill, direct triangular

@@ -28,7 +28,7 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
    HYPRE_Int *next_upper = hypre_TAlloc(HYPRE_Int, n, HYPRE_MEMORY_HOST);
    for (HYPRE_Int row = 0; row < n; row++)
    {
-      if (ia[row] < 0 || ia[row] >= ia[row+1] || ia[row+1] > ia[n] || ja[ia[row]] != row)
+      if (ia[row] < 0 || ia[row] >= ia[row + 1] || ia[row + 1] > ia[n] || ja[ia[row]] != row)
       {
          char msg[128];
          hypre_sprintf(msg, "ILU type 60 missing diagonal or invalid CSR at factor row %d", row);
@@ -37,11 +37,11 @@ hypre_ILU60CheckStructure(hypre_CSRMatrix *A, HYPRE_Int *symmetric)
          return hypre_error_flag;
       }
       next_upper[row] = ia[row] + 1;
-      for (HYPRE_Int p = ia[row]+1; p < ia[row+1]; p++)
+      for (HYPRE_Int p = ia[row] + 1; p < ia[row + 1]; p++)
       {
          HYPRE_Int col = ja[p];
          if (col < 0 || col >= n || col == row ||
-             (p > ia[row]+1 && ja[p-1] >= col))
+             (p > ia[row] + 1 && ja[p - 1] >= col))
          {
             hypre_error_w_msg(HYPRE_ERROR_GENERIC,
                               "ILU type 60 requires bounded unique columns and sorted off-diagonals");
@@ -257,7 +257,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A_diag);
          HYPRE_Int nnz = hypre_CSRMatrixNumNonzeros(A_diag);
          hypre_CSRMatrix *A_diag_h = hypre_CSRMatrixCreate(num_rows,
-                                                        hypre_CSRMatrixNumCols(A_diag), nnz);
+                                                           hypre_CSRMatrixNumCols(A_diag), nnz);
          hypre_CSRMatrixMemoryLocation(A_diag_h) = HYPRE_MEMORY_HOST;
          hypre_CSRMatrixI(A_diag_h) = hypre_TAlloc(HYPRE_Int, num_rows + 1, HYPRE_MEMORY_HOST);
          hypre_CSRMatrixJ(A_diag_h) = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST);
@@ -288,11 +288,11 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
 
          HYPRE_ANNOTATE_REGION_BEGIN("ILU60HostLevels");
          (symmetric ? hypre_CSRMatrixComputeLevelSetsSymmetricHost :
-                      hypre_CSRMatrixComputeLevelSetsOrderedHost)(A_diag_h,
-                                             &h_low_set_offsets, &h_low_level_sets,
-                                             &h_upp_set_offsets, &h_upp_level_sets,
-                                             &low_num_levels,    &upp_num_levels,
-                                             &max_level_set_size);
+          hypre_CSRMatrixComputeLevelSetsOrderedHost)(A_diag_h,
+                                                      &h_low_set_offsets, &h_low_level_sets,
+                                                      &h_upp_set_offsets, &h_upp_level_sets,
+                                                      &low_num_levels,    &upp_num_levels,
+                                                      &max_level_set_size);
 
          HYPRE_ANNOTATE_REGION_END("ILU60HostLevels");
          hypre_CSRMatrixDestroy(A_diag_h);
@@ -421,7 +421,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
          /*
-          * If the largest level set's row groups fit within a single thread
+          * If the largest level set's rows fit within a single thread
           * block, the L and U solves can each be done with a kernel that
           * loops over all levels internally (synchronizing with
           * __syncthreads() between levels) instead of one kernel launch (or
@@ -429,14 +429,9 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
           * batch consecutive narrow levels into a single block.
           */
          hypre_ParILUDataLSMaxLevelSetSize(ilu_data) = max_level_set_size;
-         /* Long rows use eight cooperating threads per row in the solves.
-          * A whole-schedule single block must fit every row group, rather than
-          * merely fitting the number of rows. Keep this capacity test aligned
-          * with the triangular solve kernels' work-sharing policy. */
-         HYPRE_Int solve_group_size = num_rows && nnz / num_rows >= 32 ? 8 : 1;
          hypre_ParILUDataLSUseSingleBlock(ilu_data)  =
             (max_level_set_size > 0 &&
-             max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK / solve_group_size);
+             max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK);
 
          {
             HYPRE_Int *d_upp_set_offsets = hypre_TAlloc(HYPRE_Int, upp_num_levels + 1,

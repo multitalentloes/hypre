@@ -54,15 +54,16 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
    }
    HYPRE_Int bad = ia[0] != 0 || ia[n] != nnz;
    HYPRE_Int *columns = NULL;
+   HYPRE_Int columns_capacity = 0;
    for (HYPRE_Int row = 0; row < n && !bad; row++)
    {
       HYPRE_Int diag = 0, size;
       HYPRE_Int ordered = 1, previous = -1;
       /* Bound both offsets before subtracting: a negative interior endpoint
        * can otherwise overflow even after a valid positive row prefix. */
-      if (ia[row] < 0 || ia[row+1] <= ia[row] || ia[row+1] > nnz) { bad = 1; break; }
-      size = ia[row+1] - ia[row];
-      for (HYPRE_Int p = ia[row]; p < ia[row+1]; p++)
+      if (ia[row] < 0 || ia[row + 1] <= ia[row] || ia[row + 1] > nnz) { bad = 1; break; }
+      size = ia[row + 1] - ia[row];
+      for (HYPRE_Int p = ia[row]; p < ia[row + 1]; p++)
       {
          bad |= ja[p] < 0 || ja[p] >= n;
          diag += ja[p] == row;
@@ -79,24 +80,29 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
        * uniqueness without sorting. Retain the general unordered-row check. */
       if (!bad && !ordered)
       {
-         if (!columns)
+         /* Scratch is row-sized, even if only one row in a large sparse
+          * matrix is unordered. Reuse it until a wider unordered row appears. */
+         if (size > columns_capacity)
          {
-            columns = hypre_TAlloc(HYPRE_Int, nnz, HYPRE_MEMORY_HOST);
+            hypre_TFree(columns, HYPRE_MEMORY_HOST);
+            columns = hypre_TAlloc(HYPRE_Int, size, HYPRE_MEMORY_HOST);
             if (!columns)
             {
                hypre_error_w_msg(HYPRE_ERROR_MEMORY, "ILU60 input validation column allocation failed");
                bad = 1;
                break;
             }
+            columns_capacity = size;
          }
-         for (HYPRE_Int p = 0; p < size; p++) { columns[p] = ja[ia[row]+p]; }
+         for (HYPRE_Int p = 0; p < size; p++) { columns[p] = ja[ia[row] + p]; }
          qsort(columns, size, sizeof(HYPRE_Int), hypre_ILU60CompareColumn);
-         for (HYPRE_Int p = 1; p < size; p++) { bad |= columns[p-1] == columns[p]; }
+         for (HYPRE_Int p = 1; p < size; p++) { bad |= columns[p - 1] == columns[p]; }
       }
       if (bad)
       {
          char msg[160];
-         hypre_sprintf(msg, "ILU60 invalid CSR, duplicate/out-of-range column or missing diagonal at local row %d", row);
+         hypre_sprintf(msg,
+                       "ILU60 invalid CSR, duplicate/out-of-range column or missing diagonal at local row %d", row);
          hypre_error_w_msg(HYPRE_ERROR_GENERIC, msg);
       }
    }
@@ -205,7 +211,7 @@ hypre_ILUSetup( void               *ilu_vdata,
 #if defined (HYPRE_USING_GPU)
    HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1(hypre_ParCSRMatrixMemoryLocation(A));
    HYPRE_MemoryLocation perm_memory_location = matBLU_d ? hypre_CSRMatrixMemoryLocation(matBLU_d) :
-                                              (matL ? hypre_ParCSRMatrixMemoryLocation(matL) : memory_location);
+                                               (matL ? hypre_ParCSRMatrixMemoryLocation(matL) : memory_location);
 
    /* TODO (VPM): Placeholder check to avoid -Wunused-variable warning. Remove this! */
    if (exec != HYPRE_EXEC_DEVICE && exec != HYPRE_EXEC_HOST)

@@ -162,9 +162,11 @@ hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data)
    {
       hypre_SyncDevice();
    }
-   hypre_GPUGraphHandler *graphs[2] = {
+   hypre_GPUGraphHandler *graphs[2] =
+   {
       (hypre_GPUGraphHandler *) ilu_data->ls_graph_L,
-      (hypre_GPUGraphHandler *) ilu_data->ls_graph_U};
+      (hypre_GPUGraphHandler *) ilu_data->ls_graph_U
+   };
    for (HYPRE_Int i = 0; i < 2; i++)
    {
       if (graphs[i])

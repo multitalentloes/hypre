@@ -1229,10 +1229,10 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
  * rereading a temporary vector between scatter and axpy. */
 __global__ void
 hypreGPUKernel_ILU60Update(hypre_DeviceItem &item,
-                          HYPRE_Int       num_rows,
-                          HYPRE_Int      *perm,
-                          HYPRE_Complex  *correction,
-                          HYPRE_Complex  *solution)
+                           HYPRE_Int       num_rows,
+                           HYPRE_Int      *perm,
+                           HYPRE_Complex  *correction,
+                           HYPRE_Complex  *solution)
 {
    const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
    if (row < num_rows)
@@ -1332,7 +1332,7 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       if (!hypre_error_flag)
       {
          hypre_CSRMatrixILU0LevelSetUSolveGraph(matLU_d, num_upp_levels, upp_set_offsets,
-                                              d_upp_set_offsets, d_upp_set_rows, utemp_data, graph_U_data);
+                                                d_upp_set_offsets, d_upp_set_rows, utemp_data, graph_U_data);
       }
    }
 

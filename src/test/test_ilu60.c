@@ -7,28 +7,30 @@
 #include <math.h>
 #include <fenv.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-#if defined(HYPRE_USING_HIP) && !defined(HYPRE_ILU60_BASELINE)
+#if defined(HYPRE_USING_HIP)
 #include <hip/hip_runtime_api.h>
 #include "_hypre_utilities.hpp"
-#elif defined(HYPRE_USING_CUDA) && !defined(HYPRE_ILU60_BASELINE)
+#elif defined(HYPRE_USING_CUDA)
 #include <cuda_runtime_api.h>
 #include "_hypre_utilities.hpp"
 #endif
 
 #define ORACLE_TOL (sizeof(HYPRE_Real) == sizeof(float) ? 2e-5 : 1e-11)
 
-static int failures;
+static HYPRE_Int failures;
 static int reverse_input_columns;
 static void check(int ok, const char *what, int n, unsigned seed)
 {
    if (!ok)
    {
-      hypre_printf("FAILED: %s n=%d seed=%u\n", what, n, seed);
+      printf("FAILED: %s n=%d seed=%u\n", what, n, seed);
       failures++;
    }
 }
 
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 /* Context for numerical assertions; ordinary oracle cases keep one stream. */
 static int case_ordering, case_path = -1, case_rhs = -1;
 static void numerical_check(double actual, double expected, double tolerance,
@@ -38,20 +40,15 @@ static void numerical_check(double actual, double expected, double tolerance,
    if (!isfinite(actual) || error > tolerance)
    {
       check(0, what, n, seed);
-      hypre_printf("  ordering=%d path=%s rhs=%d stream=%d row=%d "
-                   "actual=%.17g expected=%.17g error=%.17g limit=%.17g\n",
-                   case_ordering, case_path < 0 ? "setup" :
-                   (case_path ? "single-block" : "graph"), case_rhs,
-#if (defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)) && !defined(HYPRE_ILU60_BASELINE)
-                   hypre_HandleComputeStreamNum(hypre_handle()),
-#else
-                   -1, /* Stream internals unavailable in baseline C/CPU builds. */
-#endif
-                   row, actual, expected, error, tolerance);
+      printf("  ordering=%d path=%s rhs=%d stream=%d row=%d "
+             "actual=%.17g expected=%.17g error=%.17g limit=%.17g\n",
+             case_ordering, case_path < 0 ? "setup" :
+             (case_path ? "single-block" : "graph"), case_rhs,
+             hypre_HandleComputeStreamNum(hypre_handle()),
+             row, actual, expected, error, tolerance);
    }
 }
 
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 static unsigned next(unsigned *s)
 {
    *s = 1664525u * *s + 1013904223u;
@@ -98,11 +95,11 @@ static hypre_ParVector *vector(int n)
    return v;
 }
 
-static void schedule(hypre_CSRMatrix *F, int levels, int *offsets, int *drows,
+static void schedule(hypre_CSRMatrix *F, int levels, HYPRE_Int *offsets, HYPRE_Int *drows,
                      int lower, unsigned seed)
 {
    int n = hypre_CSRMatrixNumRows(F), i, l, k;
-   int *rows = (int *) calloc(n ? n : 1, sizeof(int));
+   HYPRE_Int *rows = (HYPRE_Int *) calloc(n ? n : 1, sizeof(HYPRE_Int));
    int *seen = (int *) calloc(n ? n : 1, sizeof(int));
    int *level = (int *) calloc(n ? n : 1, sizeof(int));
    hypre_TMemcpy(rows, drows, HYPRE_Int, n, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
@@ -128,7 +125,6 @@ static void schedule(hypre_CSRMatrix *F, int levels, int *offsets, int *drows,
    free(rows); free(seen); free(level);
 }
 
-#ifndef HYPRE_ILU60_BASELINE
 static void ordered_diagonal(void)
 {
    /* First/middle/last diagonals and irregular rows, with distinct values. */
@@ -161,7 +157,6 @@ static void ordered_diagonal(void)
       hypre_ParCSRMatrixDestroy(A);
    }
 }
-#endif
 
 static void run(HYPRE_Solver solver, int n, double *a, int *mask,
                 int ordering, int invalid, unsigned seed);
@@ -185,20 +180,24 @@ static size_t live_allocations(void)
 static void factor_batch_ownership(void)
 {
    HYPRE_Solver solver;
-   double a[25] = {1, 0, 1, 0, 0,
+   double a[25] = {1, 0, .5, 0, 0,
                    0, 4, 0, 0, 0,
-                   1, 0, 4, .02, 0,
+                   2, 0, 4, .02, 0,
                    0, 0, .01, 4, .02,
-                   0, 0, 0, .01, 4};
+                   0, 0, 0, .01, 4
+                  };
    int mask[25] = {1, 0, 1, 0, 0,
                    0, 1, 0, 0, 0,
                    1, 0, 1, 1, 0,
                    0, 0, 1, 1, 1,
-                   0, 0, 0, 1, 1};
+                   0, 0, 0, 1, 1
+                  };
    size_t before, stable;
    int rep;
    HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
    HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
+   /* Strict diagonal dominance permits the float oracle bound, while
+    * 2 * .5 / 1 == 1 preserves the exact elimination-created zero below. */
    run(solver, 5, a, mask, 0, 0, 74126);
    a[12] = 1; /* Exactly zero after eliminating the row-0 unit pivot. */
    run(solver, 5, a, mask, 0, 1, 74127);
@@ -234,9 +233,7 @@ static void ownership(void)
    HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
    run(solver, 3, a, mask, 0, 0, 0); HYPRE_ILUDestroy(solver);
    before = live_allocations();
-#ifndef HYPRE_ILU60_BASELINE
    graph_before = hypre_ILU60GraphCount(0);
-#endif
    HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
    HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
    for (rep = 0; rep < 105; rep++)
@@ -245,23 +242,17 @@ static void ownership(void)
       if (rep == 4)
       {
          stable = live_allocations();
-#ifndef HYPRE_ILU60_BASELINE
          graph_stable = hypre_ILU60GraphCount(0);
-#endif
       }
-#ifndef HYPRE_ILU60_BASELINE
       if (rep > 4) { check(hypre_ILU60GraphCount(0) == graph_stable, "stable live graph objects", 3, rep); }
-#endif
       if (rep > 4) { check(live_allocations() == stable, "stable live allocations after setup", 3, rep); }
    }
    HYPRE_ILUDestroy(solver);
-#ifndef HYPRE_ILU60_BASELINE
    check(hypre_ILU60GraphCount(0) == graph_before, "destruction returns graph handles to baseline", 3,
          0);
-#endif
    check(live_allocations() == before, "destruction returns allocation count to baseline", 3, 0);
 #if !defined(HYPRE_USING_MEMORY_TRACKER)
-   hypre_printf("PENDING: allocation accounting requires HYPRE_ENABLE_MEMORY_TRACKER=ON\n");
+   printf("PENDING: allocation accounting requires HYPRE_ENABLE_MEMORY_TRACKER=ON\n");
 #endif
 }
 
@@ -272,8 +263,8 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
    hypre_ParCSRMatrix *A = matrix(n, a, mask);
    hypre_ParVector *b = vector(n), *u = vector(n);
    int i, j, k, rhs, path, error, before = failures;
-   int *perm = (int *) calloc(n ? n : 1, sizeof(int));
-   int *storage = (int *) calloc(n ? n : 1, sizeof(int));
+   HYPRE_Int *perm = (HYPRE_Int *) calloc(n ? n : 1, sizeof(HYPRE_Int));
+   HYPRE_Int *storage = (HYPRE_Int *) calloc(n ? n : 1, sizeof(HYPRE_Int));
    double *f = (double *) calloc(n * n ? n*n : 1, sizeof(double));
    int *pattern = (int *) calloc(n * n ? n*n : 1, sizeof(int));
    HYPRE_Complex *x = (HYPRE_Complex *) calloc(n ? n : 1, sizeof(HYPRE_Complex));
@@ -333,7 +324,12 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
          if (fabs(a[i * n + i]) + off > max_sum) { max_sum = fabs(a[i * n + i]) + off; }
          if (fabs(a[i * n + i]) - off < min_margin) { min_margin = fabs(a[i * n + i]) - off; }
       }
-      check(min_margin > 0 && gamma < 1, "oracle conditioning bound", n, seed);
+      int bounded = isfinite(max_sum) && isfinite(min_margin) &&
+                    min_margin > 0 && gamma < 1;
+      check(bounded, "oracle conditioning bound", n, seed);
+      /* A failed bound is a test failure; do not manufacture a negative or
+       * infinite tolerance and then report misleading numerical failures. */
+      if (!bounded) { goto done; }
       tolerance = 8 * gamma / (1 - gamma) * max_sum / min_margin;
    }
    if (hypre_ParILUDataPerm(data))
@@ -394,9 +390,8 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
    {
       /* Device offsets serve both paths. Only force a single block when the
        * widest level actually fits within the device block limit. */
-      HYPRE_Int group_size = n && hypre_CSRMatrixNumNonzeros(F) / n >= 32 ? 8 : 1;
       if (path && (!hypre_ParILUDataDLowLevelSetOffsets(data) ||
-                   hypre_ParILUDataLSMaxLevelSetSize(data) > HYPRE_MAX_NTHREADS_BLOCK / group_size)) { continue; }
+                   hypre_ParILUDataLSMaxLevelSetSize(data) > HYPRE_MAX_NTHREADS_BLOCK)) { continue; }
       hypre_ParILUDataLSUseSingleBlock(data) = path;
       for (rhs = 0; rhs < 3; rhs++)
       {
@@ -441,15 +436,14 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
 done:
    if (failures != before)
    {
-      hypre_printf("case ordering=%d invalid=%d seed=%u\n", ordering, invalid, seed);
+      printf("case ordering=%d invalid=%d seed=%u\n", ordering, invalid, seed);
       for (i = 0; i < n; i++) for (j = 0; j < n; j++)
-            if (mask[i * n + j]) { hypre_printf("(%d,%d)=%.17g\n", i, j, a[i * n + j]); }
+            if (mask[i * n + j]) { printf("(%d,%d)=%.17g\n", i, j, a[i * n + j]); }
    }
    hypre_CSRMatrixDestroy(F);
    hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
    free(perm); free(storage); free(f); free(pattern); free(x); free(initial); free(bv); free(expected);
 }
-#ifndef HYPRE_ILU60_BASELINE
 /* Exercise graph cache invalidation alone. Residual matvec and vendor handles
  * are deliberately outside this test; changing an internal stream index does
  * not rebind those handles. Explicit test boundary syncs order copies and keep
@@ -470,7 +464,7 @@ static void stream_graph(void)
    HYPRE_ILUSetLocalReordering(solver, 0);
    data = (hypre_ParILUData *) solver;
    error = HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix) A,
-                         (HYPRE_ParVector) b, (HYPRE_ParVector) u);
+                          (HYPRE_ParVector) b, (HYPRE_ParVector) u);
    check(!error, "stream test setup", 3, 0);
    if (error) { HYPRE_ClearAllErrors(); goto done; }
    /* The public solve allocates these lazily. Direct helper calls must supply
@@ -506,7 +500,8 @@ static void stream_graph(void)
    for (rep = 0; rep < 8; rep++)
    {
       int which = (rep / 4) % 2;
-      HYPRE_Int *offsets[2] = {
+      HYPRE_Int *offsets[2] =
+      {
          rep % 2 ? alternate_offsets[0] : hypre_ParILUDataDLowLevelSetOffsets(data),
          rep % 2 ? alternate_offsets[1] : hypre_ParILUDataDUppLevelSetOffsets(data)
       };
@@ -543,9 +538,11 @@ static void stream_graph(void)
          numerical_check(host[i], scale, ORACLE_TOL * (1 + scale),
                          "stream graph correction", 3, rep, i);
       }
-      hypre_GPUGraphHandler *graphs[2] = {
+      hypre_GPUGraphHandler *graphs[2] =
+      {
          (hypre_GPUGraphHandler *) hypre_ParILUDataLSGraphL(data),
-         (hypre_GPUGraphHandler *) hypre_ParILUDataLSGraphU(data)};
+         (hypre_GPUGraphHandler *) hypre_ParILUDataLSGraphU(data)
+      };
       captured += graphs[0]->is_ready && graphs[1]->is_ready;
       for (i = 0; i < 2; i++)
       {
@@ -558,11 +555,11 @@ static void stream_graph(void)
       }
       check(hypre_ILU60GraphCount(0) <= before + 4, "stream graph handle bound", 3, rep);
    }
-   hypre_printf("stream graph test: %d/8 applications used ready L/U caches\n", captured);
+   printf("stream graph test: %d/8 applications used ready L/U caches\n", captured);
    if (captured != 8)
    {
-      hypre_printf("PENDING: graph cache invalidation coverage for uncaptured applications "
-                   "(Debug or capture fallback); their numerical checks still ran\n");
+      printf("PENDING: graph cache invalidation coverage for uncaptured applications "
+             "(Debug or capture fallback); their numerical checks still ran\n");
    }
    hypre_SyncDevice();
    /* Destroy captured graphs before freeing the captured RHS. */
@@ -578,9 +575,7 @@ done:
    hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
    check(hypre_ILU60GraphCount(0) == before, "stream test graph destruction", 3, 0);
 }
-#endif
 
-#ifndef HYPRE_ILU60_BASELINE
 static void invalid_structure(HYPRE_Solver solver)
 {
    double a[9] = {4, 1, 1, 0, 4, 0, 0, 0, 4}; int mask[9] = {1, 1, 1, 0, 1, 0, 0, 0, 1};
@@ -623,7 +618,7 @@ static void invalid_structure(HYPRE_Solver solver)
       HYPRE_Int nnz = hypre_CSRMatrixNumNonzeros(D);
       HYPRE_Int index = issue == 0 ? 0 : (issue == 1 ? n : (issue == 2 ? 1 : 2));
       HYPRE_Int offset = issue == 0 ? 1 : (issue == 1 ? nnz - 1 :
-                                              (issue == 2 ? nnz + 1 : HYPRE_INT_MIN));
+                                           (issue == 2 ? nnz + 1 : HYPRE_INT_MIN));
       /* Last case retains a valid first row and positive ia[1], then makes
        * ia[2] negative: subtraction before bounds checking would overflow. */
       hypre_TMemcpy(hypre_CSRMatrixI(D) + index, &offset, HYPRE_Int, 1,
@@ -641,9 +636,8 @@ static void invalid_structure(HYPRE_Solver solver)
    }
    run(solver, 3, a, mask, 0, 0, 18);
 }
-#endif
 
-/* Failures from a long-row cooperative factor must propagate collectively,
+/* Failures from a long-row factor must propagate collectively,
  * including to an empty rank, and a valid retry must restore usable state. */
 static void distributed_longrow_failures(int rank, int active)
 {
@@ -699,7 +693,9 @@ static void distributed_longrow_failures(int rank, int active)
       if (!rank)
       {
          for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+            {
                values[i * n + j] = i == j ? 4 : .01;
+            }
          hypre_TMemcpy(hypre_CSRMatrixData(D), values, HYPRE_Complex, n * n,
                        HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
       }
@@ -710,8 +706,8 @@ static void distributed_longrow_failures(int rank, int active)
       hypre_TMemcpy(result, hypre_VectorData(hypre_ParVectorLocalVector(u)), HYPRE_Complex, n,
                     HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
       for (i = 0; i < n; i++)
-            numerical_check(result[i], 1 / (4 + (width - 1) * .01), ORACLE_TOL,
-                            "MPI long-row recovered correction", n, issue, i);
+         numerical_check(result[i], 1 / (4 + (width - 1) * .01), ORACLE_TOL,
+                         "MPI long-row recovered correction", n, issue, i);
    }
    HYPRE_ILUDestroy(solver); hypre_ParCSRMatrixDestroy(A);
    hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
@@ -721,7 +717,8 @@ static void distributed_longrow_failures(int rank, int active)
  * Off-rank entries remain outside the local ILU, preserving block Jacobi. */
 static void distributed(void)
 {
-   int rank, size, active, n, i;
+   HYPRE_Int rank, size;
+   int active, n, i;
    HYPRE_BigInt starts[2], total;
    double a[9] = {4, 0, 0, 1, 4, 1, 0, 0, 4}; int mask[9] = {1, 0, 0, 1, 1, 1, 0, 0, 1};
    hypre_ParCSRMatrix *local, *A;
@@ -812,26 +809,23 @@ static int test_main(int argc, char **argv)
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    {
       hypre_int count = 0;
-#if defined(HYPRE_ILU60_BASELINE)
-      hypre_GetDeviceCount(&count);
-#elif defined(HYPRE_USING_HIP)
+#if defined(HYPRE_USING_HIP)
       if (hipGetDeviceCount(&count) != hipSuccess) { count = 0; }
 #else
       if (cudaGetDeviceCount(&count) != cudaSuccess) { count = 0; }
 #endif
-      if (!count) { hypre_printf("SKIP: CUDA/HIP device unavailable\n"); hypre_MPI_Finalize(); return 77; }
+      if (!count) { printf("SKIP: CUDA/HIP device unavailable\n"); hypre_MPI_Finalize(); return 77; }
    }
    HYPRE_Init();
    HYPRE_SetMemoryLocation(HYPRE_MEMORY_DEVICE);
    HYPRE_SetExecutionPolicy(HYPRE_EXEC_DEVICE);
-#ifndef HYPRE_ILU60_BASELINE
    if (argc > 1 && !strcmp(argv[1], "--stream"))
    {
       stream_graph();
-      hypre_printf("ilu60 stream: %s (%d failures)\n", failures ? "FAILED" : "PASSED", failures);
+      printf("ilu60 stream: %s (%lld failures)\n", failures ? "FAILED" : "PASSED",
+             (long long) failures);
       HYPRE_Finalize(); hypre_MPI_Finalize(); return failures ? 1 : 0;
    }
-#endif
    if (argc > 1 && !strcmp(argv[1], "--ownership"))
    {
       ownership();
@@ -839,7 +833,7 @@ static int test_main(int argc, char **argv)
    }
    if (argc > 1 && !strcmp(argv[1], "--mpi"))
    {
-      int global_failures;
+      HYPRE_Int global_failures;
       distributed();
       hypre_MPI_Allreduce(&failures, &global_failures, 1, HYPRE_MPI_INT, hypre_MPI_MAX,
                           hypre_MPI_COMM_WORLD);
@@ -858,7 +852,7 @@ static int test_main(int argc, char **argv)
    {
       double a[9] = {4, 0, 0, 1, 4, 1, 0, 0, 4};
       int mask[9] = {1, 0, 0, 1, 1, 1, 0, 0, 1};
-      /* First case is the required pre-repair failure with identity ordering. */
+      /* Exercise an asymmetric pattern with identity ordering. */
       run(solver, 3, a, mask, 0, 0, 0);
       run(solver, 3, a, mask, 1, 0, 0);
       if (argc > 1 && !strcmp(argv[1], "--minimal"))
@@ -887,9 +881,11 @@ static int test_main(int argc, char **argv)
       /* Unsorted unique rows must retain the scalar oracle result, including
        * after RCM. These rows take the validation sorting fallback. */
       double a[16] = {4, .2, .1, .3, -.1, 4, .2, 0,
-                       .5, 0, 4, .1, 0, .3, .1, 4};
+                      .5, 0, 4, .1, 0, .3, .1, 4
+                     };
       int mask[16] = {1, 1, 1, 1, 1, 1, 1, 0,
-                      1, 0, 1, 1, 0, 1, 1, 1};
+                      1, 0, 1, 1, 0, 1, 1, 1
+                     };
       reverse_input_columns = 1;
       run(solver, 4, a, mask, 0, 0, 64026);
       run(solver, 4, a, mask, 1, 0, 64026);
@@ -919,20 +915,20 @@ static int test_main(int argc, char **argv)
       }
    }
    {
-      /* Long rows select cooperative graph kernels: 65 independent rows
+      /* Long-row correctness: 65 independent rows
        * followed by 65 dependent rows exercise partial blocks and batches.
-       * Both GPU paths are checked against the independent scalar oracle. */
+       * Both orderings are checked against the independent scalar oracle. */
       int n = 130, i, j;
       double *a = (double *) calloc(n * n, sizeof(double));
       int *mask = (int *) calloc(n * n, sizeof(int));
       for (i = 0; i < n; i++) for (j = 0; j < n; j++)
-      {
-         mask[i * n + j] = i == j || i >= 65 || j >= 65;
-         a[i * n + j] = mask[i * n + j] ? (i == j ? 4 : ((i + j) % 3 - 1) * .01) : 0;
-      }
+         {
+            mask[i * n + j] = i == j || i >= 65 || j >= 65;
+            a[i * n + j] = mask[i * n + j] ? (i == j ? 4 : ((i + j) % 3 - 1) * .01) : 0;
+         }
       run(solver, n, a, mask, 0, 0, 83226);
       run(solver, n, a, mask, 1, 0, 83226);
-      /* Keep the long-row execution model while forcing the asymmetric
+      /* Keep the long rows while forcing the asymmetric
        * structure fallback: one stored edge has no reverse edge. */
       mask[3 * n + 100] = 0; a[3 * n + 100] = 0;
       a[100 * n + 3] = .01;
@@ -1000,16 +996,22 @@ static int test_main(int argc, char **argv)
             mask[i * n + n - 2] = mask[(n - 2) * n + i] = 1;
             a[i * n + n - 2] = .02; a[(n - 2) * n + i] = .01;
          }
+         /* Preserve nonzero arithmetic and every dependency edge as width
+          * grows, while maintaining a positive row-dominance margin for
+          * the independent float oracle's conditioning bound. */
+         a[n + 1] += .01 + .02 * widths[w];
+         a[(n - 2) * n + n - 2] += .02 + .01 * widths[w];
          run(solver, n, a, mask, 0, 0, 72826 + w);
          /* Invalid pivot inside a batch, including schedules interrupted by
           * the 1025-row wide level, must complete without barrier deadlock. */
          if (w == 0 || w == 6)
          {
+            double second_diagonal = a[n + 1];
             a[0] = a[n + 1] = a[1] = a[n] = 1;
             run(solver, n, a, mask, 0, 1, 72926 + w);
             a[n + 1] = NAN;
             run(solver, n, a, mask, 0, 1, 73026 + w);
-            a[0] = a[n + 1] = 8; a[1] = .02; a[n] = .01;
+            a[0] = 8; a[n + 1] = second_diagonal; a[1] = .02; a[n] = .01;
             run(solver, n, a, mask, 0, 0, 73126 + w);
          }
          free(a); free(mask);
@@ -1045,13 +1047,9 @@ static int test_main(int argc, char **argv)
          run(solver, 2, a, mask, 0, 0, 16);
       }
    }
-#ifndef HYPRE_ILU60_BASELINE
    invalid_structure(solver);
-#endif
    HYPRE_ILUDestroy(solver);
-#ifndef HYPRE_ILU60_BASELINE
    ordered_diagonal();
-#endif
    ownership();
    factor_batch_ownership();
    HYPRE_Finalize();
@@ -1067,7 +1065,8 @@ static int test_main(int argc, char **argv)
    }
    HYPRE_Finalize();
 #endif
-   hypre_printf("ilu60: %s (%d failures)\n", failures ? "FAILED" : "PASSED", failures);
+   printf("ilu60: %s (%lld failures)\n", failures ? "FAILED" : "PASSED",
+          (long long) failures);
    hypre_MPI_Finalize();
    return failures ? 1 : 0;
 }
@@ -1081,13 +1080,13 @@ int main(int argc, char **argv)
    int status;
    if (fegetenv(&entry_environment))
    {
-      hypre_printf("FAILED: cannot save floating-point environment\n");
+      printf("FAILED: cannot save floating-point environment\n");
       return 1;
    }
    status = test_main(argc, argv);
    if (fesetenv(&entry_environment))
    {
-      hypre_printf("FAILED: cannot restore floating-point environment\n");
+      printf("FAILED: cannot restore floating-point environment\n");
       return 1;
    }
    return status;
