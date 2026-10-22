@@ -49,9 +49,10 @@ type 0 remains available for other sparsity patterns; type 60 does not choose
 between implementations automatically.
 
 The implementation keeps the zero-fill pattern and serial pivot order. It uses
-sorted off-diagonals and stores factors in initial identity/RCM coordinates.
-Lower and upper schedules are computed independently on the host, supporting
-general asymmetric patterns. Each dependency level uses a separate scalar
+sorted off-diagonals, upper-row suffix metadata, and ordered sparse updates.
+Asymmetric factors retain initial identity/RCM coordinates. Structurally
+symmetric factors use lower-level storage ordering with a composed solve
+permutation; reverse dependency cohorts provide the upper schedule. Each dependency level uses a separate scalar
 kernel launch. Setup and destruction synchronize before retiring owned storage.
 
 Compare type 60 with type 0 using matching Release builds, solver settings,

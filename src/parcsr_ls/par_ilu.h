@@ -98,8 +98,9 @@ typedef struct hypre_ParILUData_struct
    HYPRE_Int            *upp_level_set_offsets;    /* host array, length num_upp_levels+1 */
    HYPRE_Int            *d_upp_level_set_rows;     /* device array, length n */
 
-   /* Initial factorization permutation for solve gather/scatter.
-    * combined_perm_d[i] maps factor coordinates to original coordinates. */
+   /* Solve permutation: storage coordinates to original coordinates.
+    * Compose initial ordering with lower-level storage order only for
+    * structurally symmetric sparsity; asymmetric factors keep initial order. */
    HYPRE_Int            *combined_perm_d;          /* device array, length n */
 
 #endif

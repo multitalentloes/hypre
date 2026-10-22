@@ -432,6 +432,21 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
                          tolerance * (1 + fabs(f[oi * n + oj])), "factor entry", n, seed, i);
       }
    }
+   {
+      int symmetric = 1;
+      for (i = 0; i < n; i++) for (j = 0; j < n; j++)
+         {
+            symmetric &= mask[i * n + j] == mask[j * n + i];
+         }
+      if (symmetric)
+      {
+         HYPRE_Int *rows = (HYPRE_Int *) calloc(n > 0 ? (size_t) n : 1, sizeof(HYPRE_Int));
+         hypre_TMemcpy(rows, hypre_ParILUDataDLowLevelSetRows(data), HYPRE_Int, n,
+                       HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         for (i = 0; i < n; i++) { check(rows[i] == i, "symmetric contiguous storage path", n, seed); }
+         free(rows);
+      }
+   }
    schedule(F, hypre_ParILUDataNumLowLevels(data), hypre_ParILUDataLowLevelSetOffsets(data),
             hypre_ParILUDataDLowLevelSetRows(data), 1, seed);
    schedule(F, hypre_ParILUDataNumUppLevels(data), hypre_ParILUDataUppLevelSetOffsets(data),

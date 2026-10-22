@@ -164,8 +164,10 @@ column indices, and exactly one stored diagonal per row. Unsorted rows are
 accepted. Stored zeros count as structural entries. Empty local blocks are
 supported, including MPI ranks with no local rows.
 
-Factors retain the initial identity/RCM ordering for both symmetric and
-asymmetric sparsity. Lower and upper schedules are constructed independently. A zero or nonfinite factorization pivot causes setup to fail. Small
+Factors with asymmetric sparsity retain the initial identity/RCM coordinates.
+For structurally symmetric patterns, factor rows are stored by lower dependency
+levels with an explicitly composed solve permutation. This storage change
+preserves triangular membership, including for stored zeros. A zero or nonfinite factorization pivot causes setup to fail. Small
 finite nonzero pivots are accepted without a magnitude threshold, so callers
 should still assess numerical conditioning and the final residual.
 

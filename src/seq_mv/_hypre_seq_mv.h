@@ -713,6 +713,10 @@ HYPRE_Int hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A,
 HYPRE_Int hypre_CSRMatrixComputeLevelSetsOrderedHost(hypre_CSRMatrix *A,
                                                      HYPRE_Int **low_offsets, HYPRE_Int **low_rows, HYPRE_Int **upp_offsets,
                                                      HYPRE_Int **upp_rows, HYPRE_Int *num_low, HYPRE_Int *num_upp, HYPRE_Int *max_width);
+
+HYPRE_Int hypre_CSRMatrixComputeLevelSetsSymmetricHost(hypre_CSRMatrix *A,
+                                                       HYPRE_Int **low_offsets, HYPRE_Int **low_rows, HYPRE_Int **upp_offsets,
+                                                       HYPRE_Int **upp_rows, HYPRE_Int *num_low, HYPRE_Int *num_upp, HYPRE_Int *max_width);
 /******************************************************************************
  * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
