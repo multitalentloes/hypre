@@ -69,6 +69,10 @@ uncaptured; a failed launch returns an error without retrying a possibly partial
 substitution. Setup and destruction synchronize before retiring owned storage;
 failed destruction retains handles and referenced storage for a later retry.
 
+After substitution, a single kernel adds each correction to its unique
+permuted solution destination. This avoids a separate scatter buffer and axpy
+pass; the next residual calculation overwrites the scratch residual.
+
 Compare type 60 with type 0 using matching Release builds, solver settings,
 precision, architecture, ordering, MPI, and allocators. Measure complete
 converged solves, setup time, first-use costs, iteration counts, and independent

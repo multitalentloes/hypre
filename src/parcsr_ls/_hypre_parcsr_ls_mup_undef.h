@@ -2252,6 +2252,7 @@
 #undef rfun
 #undef rfun_rs
 #undef transpose_matrix_create
+#undef hypreGPUKernel_ILU60Update
 #undef hypre_BatchedGaussJordanSolveDevice
 #undef hypre_BlockDiagInvDevice
 #undef hypre_BoomerAMGBuildDirInterpDevice

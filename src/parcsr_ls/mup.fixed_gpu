@@ -1,3 +1,4 @@
+hypreGPUKernel_ILU60Update
 hypre_BatchedGaussJordanSolveDevice
 hypre_BlockDiagInvDevice
 hypre_BoomerAMGBuildDirInterpDevice

@@ -1379,7 +1379,27 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
    return hypre_error_flag;
 }
 
-/* Apply a correction in factor coordinates, one kernel per level. */
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+/* Each correction has a unique destination because perm is a permutation.
+ * Fuse the inverse permutation with the solution update to avoid writing and
+ * rereading a temporary vector between scatter and axpy. */
+__global__ void
+hypreGPUKernel_ILU60Update(hypre_DeviceItem &item,
+                           HYPRE_Int       num_rows,
+                           HYPRE_Int      *perm,
+                           HYPRE_Complex  *correction,
+                           HYPRE_Complex  *solution)
+{
+   const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (row < num_rows)
+   {
+      const HYPRE_Int destination = perm ? perm[row] : row;
+      solution[destination] += correction[row];
+   }
+}
+#endif
+
+/* Apply a residual correction in factor-storage coordinates. */
 HYPRE_Int
 hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix  *A,
                                hypre_CSRMatrix     *matLU_d,
@@ -1448,16 +1468,12 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix  *A,
       return hypre_error_flag;
    }
 
-   if (perm)
-   {
-      HYPRE_THRUST_CALL(scatter, utemp_data, utemp_data + num_rows, perm, ftemp_data);
-   }
-   else
-   {
-      hypre_TMemcpy(ftemp_data, utemp_data, HYPRE_Complex, num_rows,
-                    HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
-   }
-   hypre_ParVectorAxpy(1.0, ftemp, u);
+   /* Scatter directly into the solution; the next residual overwrites ftemp. */
+   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
+   dim3 gDim = hypre_GetDefaultDeviceGridDimension(num_rows, "thread", bDim);
+   HYPRE_Complex *u_data = hypre_VectorData(hypre_ParVectorLocalVector(u));
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_ILU60Update, gDim, bDim,
+                    num_rows, perm, utemp_data, u_data);
    hypre_SyncComputeStream();
 
    hypre_GpuProfilingPopRange();

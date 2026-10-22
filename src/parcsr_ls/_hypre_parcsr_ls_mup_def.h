@@ -2255,6 +2255,7 @@
 #define rfun HYPRE_FIXEDPRECISION_FUNC ( rfun )
 #define rfun_rs HYPRE_FIXEDPRECISION_FUNC ( rfun_rs )
 #define transpose_matrix_create HYPRE_FIXEDPRECISION_FUNC ( transpose_matrix_create )
+#define hypreGPUKernel_ILU60Update HYPRE_FIXEDPRECISION_FUNC ( hypreGPUKernel_ILU60Update )
 #define hypre_BatchedGaussJordanSolveDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_BatchedGaussJordanSolveDevice )
 #define hypre_BlockDiagInvDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_BlockDiagInvDevice )
 #define hypre_BoomerAMGBuildDirInterpDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_BoomerAMGBuildDirInterpDevice )
