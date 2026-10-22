@@ -4840,7 +4840,8 @@ hypre_CSRMatrixILU0LevelSetTraverse(hypre_CSRMatrix *A, HYPRE_Int upper,
                                     HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *f,
                                     HYPRE_Int block_capacity)
 {
-   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
+   /* Preserve the scalar-level launch width; batching has its own capacity. */
+   dim3 bDim(128);
    for (HYPRE_Int level = 0; level < num_levels; level++)
    {
       HYPRE_Int size = offsets[level + 1] - offsets[level];

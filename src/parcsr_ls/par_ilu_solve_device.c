@@ -1282,7 +1282,7 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
       else
       {
          failed = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, d_offsets, rows, rhs,
-                                                      hypre_GetDefaultDeviceBlockDimension().x);
+                                                      HYPRE_MAX_NTHREADS_BLOCK);
       }
       /* End every capture we own, including an invalidated capture. */
       hypre_GraphError ended = hypre_GraphTryStreamEndCapture(stream, &g->graph);
@@ -1368,7 +1368,7 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
 #endif
    HYPRE_Int launch_status = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets,
                                                                  d_offsets, rows, rhs,
-                                                                 hypre_GetDefaultDeviceBlockDimension().x);
+                                                                 HYPRE_MAX_NTHREADS_BLOCK);
    if (launch_status)
    {
       hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
