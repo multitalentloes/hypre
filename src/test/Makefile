@@ -74,6 +74,7 @@ HYPRE_DRIVERS =\
  zboxloop.c
 
 HYPRE_UNIT_TESTS =\
+ test_gpu_graph.c\
  unit/test_csr_overlap.c\
  unit/test_matrix_stats.c\
 
@@ -223,6 +224,10 @@ test_mp_pcg_3d: test_mp_pcg_3d.o
 	${LINK_CC} -o $@ $< ${LFLAGS}
 
 # Unit tests
+
+# This test contains a native CUDA/HIP kernel; .obj selects CUCC when enabled.
+test_gpu_graph: test_gpu_graph.obj
+	${LINK_CC} -o $@ $< ${LFLAGS}
 
 unit/%.o: unit/%.c
 	${CC} ${CFLAGS} -c $< -o $@

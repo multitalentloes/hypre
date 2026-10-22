@@ -24,6 +24,7 @@ set(TEST_SRCS
   struct_migrate.c
   ij_assembly.c
   unit/test_csr_overlap.c
+  test_gpu_graph.c
   unit/test_matrix_stats.c
 )
 
@@ -253,4 +254,9 @@ if(HYPRE_ENABLE_FORTRAN)
   if(HYPRE_ENABLE_MPI)
     target_link_libraries(f77_struct PUBLIC MPI::MPI_Fortran)
   endif()
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME test_gpu_graph COMMAND test_gpu_graph)
+  set_tests_properties(test_gpu_graph PROPERTIES SKIP_RETURN_CODE 77 LABELS "GPU" RUN_SERIAL TRUE)
 endif()
