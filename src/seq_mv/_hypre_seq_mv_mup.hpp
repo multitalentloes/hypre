@@ -154,6 +154,13 @@ HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolve_long_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_long_double *f );
 
 HYPRE_Int
+hypre_CSRMatrixILU0LevelSetTraverse_flt( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *rhs );
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetTraverse_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_double *rhs );
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetTraverse_long_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_long_double *rhs );
+
+HYPRE_Int
 hypre_CSRMatrixILU0LevelSetUSolve_flt( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *f );
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetUSolve_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_double *f );

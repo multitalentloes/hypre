@@ -284,7 +284,7 @@ hypre_ILUSolve( void               *ilu_vdata,
             if (exec == HYPRE_EXEC_DEVICE)
             {
                /* Level-set based LU solve for ilu_type 60 */
-               hypre_ILUSolveLULevelSetDevice(matA, matBLU_d, F_array, U_array, combined_perm,
+               hypre_ILUSolveLULevelSetDevice(ilu_data, matA, matBLU_d, F_array, U_array, combined_perm,
                                               num_low_levels, low_set_offsets, d_low_set_rows,
                                               num_upp_levels, upp_set_offsets, d_upp_set_rows,
                                               Utemp, Ftemp);

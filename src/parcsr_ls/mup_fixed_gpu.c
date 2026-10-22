@@ -275,6 +275,22 @@ hypre_GetGlobalMeasureDevice( hypre_ParCSRMatrix *S, hypre_ParCSRCommPkg *comm_p
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
+hypre_ILU60GraphCount( HYPRE_Int delta )
+{
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILU60GraphCount)( delta );
+}
+
+/*--------------------------------------------------------------------------*/
+
+HYPRE_Int
+hypre_ILU60TriangularSolve( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs )
+{
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILU60TriangularSolve)( owner, upper, A, num_levels, offsets, rows, rhs );
+}
+
+/*--------------------------------------------------------------------------*/
+
+HYPRE_Int
 hypre_ILUApplyLowerJacIterDevice( hypre_CSRMatrix *A, hypre_Vector *input, hypre_Vector *work, hypre_Vector *output, HYPRE_Int lower_jacobi_iters )
 {
    return HYPRE_CURRENTPRECISION_FUNC(hypre_ILUApplyLowerJacIterDevice)( A, input, work, output, lower_jacobi_iters );
@@ -339,9 +355,9 @@ hypre_ILUSolveLUIterDevice( hypre_ParCSRMatrix *A, hypre_CSRMatrix *matLU, hypre
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
-hypre_ILUSolveLULevelSetDevice( hypre_ParCSRMatrix *A, hypre_CSRMatrix *matLU_d, hypre_ParVector *f, hypre_ParVector *u, HYPRE_Int *perm, HYPRE_Int num_low_levels, HYPRE_Int *low_set_offsets, HYPRE_Int *d_low_set_rows, HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets, HYPRE_Int *d_upp_set_rows, hypre_ParVector *ftemp, hypre_ParVector *utemp )
+hypre_ILUSolveLULevelSetDevice( hypre_ParILUData *owner, hypre_ParCSRMatrix *A, hypre_CSRMatrix *matLU_d, hypre_ParVector *f, hypre_ParVector *u, HYPRE_Int *perm, HYPRE_Int num_low_levels, HYPRE_Int *low_set_offsets, HYPRE_Int *d_low_set_rows, HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets, HYPRE_Int *d_upp_set_rows, hypre_ParVector *ftemp, hypre_ParVector *utemp )
 {
-   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILUSolveLULevelSetDevice)( A, matLU_d, f, u, perm, num_low_levels, low_set_offsets, d_low_set_rows, num_upp_levels, upp_set_offsets, d_upp_set_rows, ftemp, utemp );
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILUSolveLULevelSetDevice)( owner, A, matLU_d, f, u, perm, num_low_levels, low_set_offsets, d_low_set_rows, num_upp_levels, upp_set_offsets, d_upp_set_rows, ftemp, utemp );
 }
 
 /*--------------------------------------------------------------------------*/

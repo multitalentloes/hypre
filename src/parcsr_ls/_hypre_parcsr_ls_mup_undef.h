@@ -2341,6 +2341,8 @@
 #undef hypre_GenerateMultiPiDevice
 #undef hypre_GenerateMultipassPiDevice
 #undef hypre_GetGlobalMeasureDevice
+#undef hypre_ILU60GraphCount
+#undef hypre_ILU60TriangularSolve
 #undef hypre_ILUApplyLowerJacIterDevice
 #undef hypre_ILUApplyLowerUpperJacIterDevice
 #undef hypre_ILUApplyUpperJacIterDevice

@@ -217,6 +217,7 @@
 #define hypre_CSRMatrixILU0 HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixILU0 )
 #define hypre_CSRMatrixILU0LevelSetFactorization HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixILU0LevelSetFactorization )
 #define hypre_CSRMatrixILU0LevelSetLSolve HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixILU0LevelSetLSolve )
+#define hypre_CSRMatrixILU0LevelSetTraverse HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixILU0LevelSetTraverse )
 #define hypre_CSRMatrixILU0LevelSetUSolve HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixILU0LevelSetUSolve )
 #define hypre_CSRMatrixIdentityDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixIdentityDevice )
 #define hypre_CSRMatrixIntSpMVDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_CSRMatrixIntSpMVDevice )

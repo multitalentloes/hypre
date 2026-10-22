@@ -2344,6 +2344,8 @@
 #define hypre_GenerateMultiPiDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_GenerateMultiPiDevice )
 #define hypre_GenerateMultipassPiDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_GenerateMultipassPiDevice )
 #define hypre_GetGlobalMeasureDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_GetGlobalMeasureDevice )
+#define hypre_ILU60GraphCount HYPRE_FIXEDPRECISION_FUNC ( hypre_ILU60GraphCount )
+#define hypre_ILU60TriangularSolve HYPRE_FIXEDPRECISION_FUNC ( hypre_ILU60TriangularSolve )
 #define hypre_ILUApplyLowerJacIterDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_ILUApplyLowerJacIterDevice )
 #define hypre_ILUApplyLowerUpperJacIterDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_ILUApplyLowerUpperJacIterDevice )
 #define hypre_ILUApplyUpperJacIterDevice HYPRE_FIXEDPRECISION_FUNC ( hypre_ILUApplyUpperJacIterDevice )

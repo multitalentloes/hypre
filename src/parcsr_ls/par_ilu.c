@@ -13,6 +13,10 @@
 
 #include "_hypre_parcsr_ls.h"
 #include "_hypre_utilities.hpp"
+#include "par_ilu_device.h"
+#if defined(HYPRE_USING_GPU)
+#include <atomic>
+#endif
 
 /*--------------------------------------------------------------------------
  * hypre_ILUCreate
@@ -152,12 +156,46 @@ hypre_ILUCreate( void )
  *--------------------------------------------------------------------------*/
 
 #if defined(HYPRE_USING_GPU)
+/* Native graph handles are counted locally, independently of hypre allocations. */
+HYPRE_Int
+hypre_ILU60GraphCount(HYPRE_Int delta)
+{
+   static std::atomic<HYPRE_Int> count{0};
+   return count.fetch_add(delta, std::memory_order_relaxed) + delta;
+}
+
 /* Called before factors and scratch vectors are freed. Synchronization is paid
  * only at rebuild/destruction, never during steady-state application. */
 HYPRE_Int
 hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data)
 {
+   ilu_data->ls_ready = 0;
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   if (ilu_data->combined_perm_d || ilu_data->ls_graph[0] || ilu_data->ls_graph[1])
+   {
+      if (hypre_ILU60DeviceSynchronize() != hypre_GraphSuccess)
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 synchronization before cleanup failed");
+         return 1;
+      }
+   }
+   for (HYPRE_Int upper = 0; upper < 2; upper++)
+   {
+      auto cache = (hypre_ILU60GraphCache *) ilu_data->ls_graph[upper];
+      if (cache)
+      {
+         if (hypre_ILU60CacheReset(cache) != hypre_GraphSuccess)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph destruction failed; ownership retained");
+            return 1;
+         }
+         hypre_TFree(cache, HYPRE_MEMORY_HOST);
+         ilu_data->ls_graph[upper] = NULL;
+      }
+   }
+#else
    if (ilu_data->combined_perm_d) { hypre_SyncDevice(); }
+#endif
    hypre_TFree(ilu_data->low_level_set_offsets, HYPRE_MEMORY_HOST);
    hypre_TFree(ilu_data->upp_level_set_offsets, HYPRE_MEMORY_HOST);
    hypre_TFree(ilu_data->d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
@@ -165,7 +203,7 @@ hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data)
    hypre_TFree(ilu_data->combined_perm_d, HYPRE_MEMORY_DEVICE);
    ilu_data->num_low_levels = ilu_data->num_upp_levels = 0;
    ilu_data->ls_ready = 0;
-   return hypre_error_flag;
+   return 0;
 }
 #endif
 
@@ -196,7 +234,7 @@ hypre_ILUDestroy( void *data )
 
       /* GPU additional data */
 #if defined(HYPRE_USING_GPU)
-      hypre_ILULevelSetCleanup(ilu_data);
+      if (hypre_ILULevelSetCleanup(ilu_data)) { return hypre_error_flag; }
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataAperm(ilu_data) );
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataR(ilu_data) );
       hypre_ParCSRMatrixDestroy( hypre_ParILUDataP(ilu_data) );

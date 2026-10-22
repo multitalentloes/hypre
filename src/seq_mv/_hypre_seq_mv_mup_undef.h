@@ -214,6 +214,7 @@
 #undef hypre_CSRMatrixILU0
 #undef hypre_CSRMatrixILU0LevelSetFactorization
 #undef hypre_CSRMatrixILU0LevelSetLSolve
+#undef hypre_CSRMatrixILU0LevelSetTraverse
 #undef hypre_CSRMatrixILU0LevelSetUSolve
 #undef hypre_CSRMatrixIdentityDevice
 #undef hypre_CSRMatrixIntSpMVDevice

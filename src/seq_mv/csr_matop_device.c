@@ -4746,10 +4746,12 @@ hypreGPUKernel_CSRMatrixILU0LevelSetSolve(hypre_DeviceItem  &item,
 }
 
 
+/* Returns native launch status without changing hypre's error state. Debug
+ * executes uncaptured and retains the usual launch synchronization checks. */
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
-                                  HYPRE_Int *offsets, HYPRE_Int *rows,
-                                  HYPRE_Complex *f)
+hypre_CSRMatrixILU0LevelSetTraverse(hypre_CSRMatrix *A, HYPRE_Int upper,
+                                    HYPRE_Int num_levels, HYPRE_Int *offsets,
+                                    HYPRE_Int *rows, HYPRE_Complex *f)
 {
    dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
    for (HYPRE_Int level = 0; level < num_levels; level++)
@@ -4757,9 +4759,38 @@ hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
       HYPRE_Int size = offsets[level + 1] - offsets[level];
       if (!size) { continue; }
       dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<0>, gDim, bDim,
-                       size, rows + offsets[level], hypre_CSRMatrixI(A),
-                       hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      if (upper)
+      {
+         HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<1>, gDim, bDim,
+                          size, rows + offsets[level], hypre_CSRMatrixI(A),
+                          hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      }
+      else
+      {
+         HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<0>, gDim, bDim,
+                          size, rows + offsets[level], hypre_CSRMatrixI(A),
+                          hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      }
+#if defined(HYPRE_USING_CUDA)
+      cudaError_t error = cudaGetLastError();
+      if (error != cudaSuccess) { return (HYPRE_Int) error; }
+#else
+      hipError_t error = hipGetLastError();
+      if (error != hipSuccess) { return (HYPRE_Int) error; }
+#endif
+   }
+   return 0;
+}
+
+
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
+                                  HYPRE_Int *offsets, HYPRE_Int *rows,
+                                  HYPRE_Complex *f)
+{
+   if (hypre_CSRMatrixILU0LevelSetTraverse(A, 0, num_levels, offsets, rows, f))
+   {
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
    }
    return hypre_error_flag;
 }
@@ -4769,15 +4800,9 @@ hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
                                   HYPRE_Int *offsets, HYPRE_Int *rows,
                                   HYPRE_Complex *f)
 {
-   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
-   for (HYPRE_Int level = 0; level < num_levels; level++)
+   if (hypre_CSRMatrixILU0LevelSetTraverse(A, 1, num_levels, offsets, rows, f))
    {
-      HYPRE_Int size = offsets[level + 1] - offsets[level];
-      if (!size) { continue; }
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<1>, gDim, bDim,
-                       size, rows + offsets[level], hypre_CSRMatrixI(A),
-                       hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
    }
    return hypre_error_flag;
 }

@@ -4,6 +4,7 @@
 /* Independent scalar sparse-pattern ILU0 oracle. No GPU permutation algorithm
  * is used by the oracle: its coordinates are the initial factor ordering. */
 #include "_hypre_parcsr_ls.h"
+#include "par_ilu_device.h"
 #include <math.h>
 #include <fenv.h>
 #include <stdlib.h>
@@ -298,11 +299,13 @@ static void ownership(void)
    int rep;
    double a[9] = {4, 0, 0, 0, 4, 0, 0, 0, 4}; int mask[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
    size_t before, stable = 0;
+   HYPRE_Int graphs_before, graphs_stable = 0;
    /* Warm handle/library caches before measuring solver ownership. */
    HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
    HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
    run(solver, 3, a, mask, 0, 0, 0); HYPRE_ILUDestroy(solver);
    before = live_allocations();
+   graphs_before = hypre_ILU60GraphCount(0);
    HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
    HYPRE_ILUSetTol(solver, 0); HYPRE_ILUSetMaxIter(solver, 1);
    for (rep = 0; rep < 105; rep++)
@@ -311,10 +314,14 @@ static void ownership(void)
       if (rep == 4)
       {
          stable = live_allocations();
+         graphs_stable = hypre_ILU60GraphCount(0);
       }
+      if (rep > 4) { check(hypre_ILU60GraphCount(0) == graphs_stable, "stable live graph objects", 3, rep); }
       if (rep > 4) { check(live_allocations() == stable, "stable live allocations after setup", 3, rep); }
    }
    HYPRE_ILUDestroy(solver);
+   check(hypre_ILU60GraphCount(0) == graphs_before, "native graph handles returned after destruction",
+         3, 0);
    check(live_allocations() == before, "destruction returns allocation count to baseline", 3, 0);
 #if !defined(HYPRE_USING_MEMORY_TRACKER)
    printf("PENDING: allocation accounting requires HYPRE_ENABLE_MEMORY_TRACKER=ON\n");
@@ -579,6 +586,138 @@ done:
    hypre_SyncDevice();
    hypre_HandleComputeStreamNum(hypre_handle()) = original_stream;
    if (solver) { HYPRE_ILUDestroy(solver); }
+   hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
+}
+
+/* Isolate captured substitutions from vendor residual handles when changing
+ * streams. Every changed captured pointer remains alive through owner cleanup. */
+static void graph_lifecycle(void)
+{
+   double a[9] = {4, 0, 0, 1, 4, 1, 0, 0, 4};
+   int mask[9] = {1, 0, 0, 1, 1, 1, 0, 0, 1};
+   HYPRE_Solver solver;
+   hypre_ParCSRMatrix *A = matrix(3, a, mask);
+   hypre_ParVector *b = vector(3), *u = vector(3);
+   HYPRE_Int original_stream = hypre_HandleComputeStreamNum(hypre_handle());
+   HYPRE_Int graphs_before = hypre_ILU60GraphCount(0);
+   HYPRE_Complex *scratch[2] = {NULL, NULL}, host[3];
+   HYPRE_Int *rows[2] = {NULL, NULL}, *offsets[2] = {NULL, NULL};
+   hypre_CSRMatrix *copy = NULL;
+   HYPRE_ILUCreate(&solver); HYPRE_ILUSetType(solver, 60);
+   HYPRE_ILUSetLocalReordering(solver, 0);
+   hypre_ParILUData *data = (hypre_ParILUData *) solver;
+   check(!HYPRE_ILUSetup(solver, (HYPRE_ParCSRMatrix) A, (HYPRE_ParVector) b,
+                         (HYPRE_ParVector) u), "graph lifecycle setup", 3, 0);
+   if (HYPRE_GetError()) { HYPRE_ClearAllErrors(); goto done; }
+   {
+      hypre_CSRMatrix *factor = hypre_ParILUDataMatBILUDevice(data);
+      HYPRE_Int levels[2] = {data->num_low_levels, data->num_upp_levels};
+      HYPRE_Int *original_rows[2] = {data->d_low_level_set_rows, data->d_upp_level_set_rows};
+      HYPRE_Int *original_offsets[2] = {data->low_level_set_offsets, data->upp_level_set_offsets};
+      copy = hypre_CSRMatrixClone_v2(factor, 1, HYPRE_MEMORY_DEVICE);
+      for (int upper = 0; upper < 2; upper++)
+      {
+         scratch[upper] = hypre_TAlloc(HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE);
+         rows[upper] = hypre_TAlloc(HYPRE_Int, 3, HYPRE_MEMORY_DEVICE);
+         offsets[upper] = hypre_TAlloc(HYPRE_Int, levels[upper] + 1, HYPRE_MEMORY_HOST);
+         hypre_TMemcpy(rows[upper], original_rows[upper], HYPRE_Int, 3,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
+         memcpy(offsets[upper], original_offsets[upper], (levels[upper] + 1) * sizeof(HYPRE_Int));
+      }
+      for (int rep = 0; rep < 12; rep++)
+      {
+         hypre_SyncDevice();
+         hypre_HandleComputeStreamNum(hypre_handle()) = rep == 8 ?
+                                                        (original_stream + 1) % HYPRE_MAX_NUM_STREAMS : original_stream;
+         hypre_CSRMatrix view = *factor;
+         if (rep == 2) { hypre_CSRMatrixI(&view) = hypre_CSRMatrixI(copy); }
+         if (rep == 3) { hypre_CSRMatrixJ(&view) = hypre_CSRMatrixJ(copy); }
+         if (rep == 4) { hypre_CSRMatrixData(&view) = hypre_CSRMatrixData(copy); }
+         HYPRE_Complex *rhs = scratch[rep == 7];
+         double scale = rep + 1;
+         host[0] = 4 * scale; host[1] = 6 * scale; host[2] = 4 * scale;
+         hypre_TMemcpy(rhs, host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+         hypre_SyncDevice();
+         for (int upper = 0; upper < 2; upper++)
+         {
+            HYPRE_Int *r = rep == 5 ? rows[upper] : original_rows[upper];
+            HYPRE_Int *o = rep == 6 ? offsets[upper] : original_offsets[upper];
+            check(!hypre_ILU60TriangularSolve(data, upper, &view, levels[upper], o, r, rhs),
+                  "graph lifecycle substitution", 3, rep);
+#if !defined(HYPRE_DEBUG)
+            auto cache = (hypre_ILU60GraphCache *) data->ls_graph[upper];
+            check(cache && cache->handler.is_ready &&
+                  cache->stream == hypre_HandleComputeStream(hypre_handle()) &&
+                  cache->ia == hypre_CSRMatrixI(&view) && cache->ja == hypre_CSRMatrixJ(&view) &&
+                  cache->values == hypre_CSRMatrixData(&view) && cache->rows == r &&
+                  cache->offsets == o && cache->rhs == rhs, "current captured identities", 3, rep);
+#endif
+         }
+         hypre_SyncDevice();
+         hypre_TMemcpy(host, rhs, HYPRE_Complex, 3, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         for (int i = 0; i < 3; i++)
+         {
+            numerical_check(host[i], scale, ORACLE_TOL * (1 + scale), "graph lifecycle correction", 3, rep, i);
+         }
+         check(hypre_ILU60GraphCount(0) <= graphs_before + 4, "bounded native graph handles", 3, rep);
+      }
+#if !defined(HYPRE_DEBUG)
+      for (int failure = 1; failure <= 3; failure++)
+      {
+         auto cache = (hypre_ILU60GraphCache *) data->ls_graph[0];
+         cache->handler.is_ready = 0;
+         cache->test_failure = failure;
+         host[0] = 4; host[1] = 6; host[2] = 4;
+         hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+         int error = hypre_ILU60TriangularSolve(data, 0, factor, levels[0], original_offsets[0],
+                                                original_rows[0], scratch[0]);
+         check((error != 0) == (failure == 3), "capture/instantiate fallback and launch failure", 3,
+               failure);
+         check(!cache->handler.is_ready, "failed graph never published ready", 3, failure);
+         if (failure == 3)
+         {
+            HYPRE_ClearAllErrors();
+            hypre_SyncDevice();
+            hypre_TMemcpy(host, scratch[0], HYPRE_Complex, 3, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+            check(host[0] == 4 && host[1] == 6 && host[2] == 4,
+                  "failed launch is not retried uncaptured", 3, failure);
+         }
+         /* A fresh application must recover on the same owner and pointers. */
+         host[0] = 4; host[1] = 6; host[2] = 4;
+         hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+         for (int upper = 0; upper < 2; upper++)
+         {
+            check(!hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper],
+                                              original_rows[upper], scratch[0]), "graph failure recovery", 3, failure);
+         }
+         hypre_SyncDevice();
+         hypre_TMemcpy(host, scratch[0], HYPRE_Complex, 3, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
+         for (int i = 0; i < 3; i++)
+         { numerical_check(host[i], 1, ORACLE_TOL * 2, "recovered graph correction", 3, failure, i); }
+      }
+      /* Leave a replay pending: destruction must synchronize before retiring it. */
+      host[0] = 4; host[1] = 6; host[2] = 4;
+      hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+      for (int upper = 0; upper < 2; upper++)
+      { hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper], original_rows[upper], scratch[0]); }
+      printf("ILU graph lifecycle: Release capture/replay and failure recovery exercised\n");
+#else
+      check(!data->ls_graph[0] && !data->ls_graph[1], "Debug uses uncaptured traversal", 3, 0);
+      printf("ILU graph lifecycle: Debug uncaptured traversal exercised\n");
+#endif
+   }
+done:
+   HYPRE_ILUDestroy(solver);
+   check(hypre_ILU60GraphCount(0) == graphs_before,
+         "graph lifecycle destruction returns native handles", 3, 0);
+   hypre_HandleComputeStreamNum(hypre_handle()) = original_stream;
+   for (int i = 0; i < 2; i++)
+   {
+      hypre_TFree(scratch[i], HYPRE_MEMORY_DEVICE);
+      hypre_TFree(rows[i], HYPRE_MEMORY_DEVICE);
+      hypre_TFree(offsets[i], HYPRE_MEMORY_HOST);
+   }
+   hypre_CSRMatrixDestroy(copy);
    hypre_ParCSRMatrixDestroy(A); hypre_ParVectorDestroy(b); hypre_ParVectorDestroy(u);
 }
 
@@ -853,6 +992,7 @@ static int test_main(int argc, char **argv)
    if (argc > 1 && !strcmp(argv[1], "--stream"))
    {
       stream_scalar();
+      graph_lifecycle();
       printf("ilu60 stream: %s (%lld failures)\n", failures ? "FAILED" : "PASSED",
              (long long) failures);
       HYPRE_Finalize(); hypre_MPI_Finalize(); return failures ? 1 : 0;

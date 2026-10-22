@@ -89,6 +89,9 @@ typedef struct hypre_ParILUData_struct
    void                 *ls_last_stream;
    HYPRE_Int             ls_device;
    HYPRE_Int             ls_ready; /* complete successful type-60 setup */
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   void                 *ls_graph[2]; /* private hypre_ILU60GraphCache, L then U */
+#endif
 
    /* Level-set data for ilu_type 60 triangular solves */
    HYPRE_Int             num_low_levels;           /* number of lower triangular level sets */

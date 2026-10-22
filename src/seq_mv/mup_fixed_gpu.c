@@ -171,6 +171,14 @@ hypre_CSRMatrixILU0LevelSetLSolve( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYP
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
+hypre_CSRMatrixILU0LevelSetTraverse( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs )
+{
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetTraverse)( A, upper, num_levels, offsets, rows, rhs );
+}
+
+/*--------------------------------------------------------------------------*/
+
+HYPRE_Int
 hypre_CSRMatrixILU0LevelSetUSolve( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *f )
 {
    return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetUSolve)( A, num_levels, offsets, rows, f );

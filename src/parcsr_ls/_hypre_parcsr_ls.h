@@ -1320,6 +1320,9 @@ typedef struct hypre_ParILUData_struct
    void                 *ls_last_stream;
    HYPRE_Int             ls_device;
    HYPRE_Int             ls_ready; /* complete successful type-60 setup */
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   void                 *ls_graph[2]; /* private hypre_ILU60GraphCache, L then U */
+#endif
 
    /* Level-set data for ilu_type 60 triangular solves */
    HYPRE_Int             num_low_levels;           /* number of lower triangular level sets */
@@ -4004,11 +4007,19 @@ HYPRE_Int hypre_FSAISetupDevice( void *fsai_vdata, hypre_ParCSRMatrix *A,
 
 #if defined(HYPRE_USING_GPU)
 HYPRE_Int hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data);
-HYPRE_Int hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix *A, hypre_CSRMatrix *matLU_d,
+HYPRE_Int hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix *A,
+                                         hypre_CSRMatrix *matLU_d,
                                          hypre_ParVector *f, hypre_ParVector *u, HYPRE_Int *perm,
                                          HYPRE_Int num_low_levels, HYPRE_Int *low_set_offsets, HYPRE_Int *d_low_set_rows,
                                          HYPRE_Int num_upp_levels, HYPRE_Int *upp_set_offsets, HYPRE_Int *d_upp_set_rows,
                                          hypre_ParVector *ftemp, hypre_ParVector *utemp);
+#endif
+
+#if defined(HYPRE_USING_GPU)
+HYPRE_Int hypre_ILU60GraphCount(HYPRE_Int delta);
+HYPRE_Int hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
+                                     hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows,
+                                     HYPRE_Complex *rhs);
 #endif
 
 #ifdef __cplusplus

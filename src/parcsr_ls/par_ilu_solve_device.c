@@ -8,6 +8,7 @@
 #include "_hypre_onedpl.hpp"
 #include "_hypre_parcsr_ls.h"
 #include "_hypre_utilities.hpp"
+#include "par_ilu_device.h"
 
 #if defined(HYPRE_USING_GPU)
 
@@ -1223,9 +1224,113 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
    return hypre_error_flag;
 }
 
+/* Capture once and reuse exactly the same level traversal as the fallback.
+ * Only a capture that executed no kernels can fall back. A failed replay must
+ * return an error immediately, since it may have partly modified the RHS. */
+HYPRE_Int
+hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
+                           hypre_CSRMatrix *A, HYPRE_Int num_levels,
+                           HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs)
+{
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   if (!hypre_CSRMatrixNumRows(A)) { return hypre_error_flag; }
+#if !defined(HYPRE_DEBUG)
+   auto stream = hypre_HandleComputeStream(hypre_handle());
+   auto cache = (hypre_ILU60GraphCache *) owner->ls_graph[upper];
+   if (!cache)
+   {
+      cache = hypre_CTAlloc(hypre_ILU60GraphCache, 1, HYPRE_MEMORY_HOST);
+      if (!cache) { return hypre_error_flag; }
+      owner->ls_graph[upper] = cache;
+   }
+   auto g = &cache->handler;
+   if (g->is_ready && (cache->stream != stream || cache->ia != hypre_CSRMatrixI(A) ||
+                       cache->ja != hypre_CSRMatrixJ(A) || cache->values != hypre_CSRMatrixData(A) ||
+                       cache->offsets != offsets || cache->rows != rows || cache->rhs != rhs ||
+                       cache->num_levels != num_levels))
+   {
+      g->is_ready = 0;
+   }
+   if (!g->is_ready && (g->graph || g->graph_exec))
+   {
+      if (hypre_ILU60DeviceSynchronize() != hypre_GraphSuccess ||
+          hypre_ILU60CacheReset(cache) != hypre_GraphSuccess)
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph retirement failed; ownership retained");
+         return hypre_error_flag;
+      }
+   }
+   if (!g->is_ready && hypre_GraphTryStreamBeginCapture(stream) == hypre_GraphSuccess)
+   {
+      HYPRE_Int failure = cache->test_failure;
+      if (failure != 3) { cache->test_failure = 0; }
+      HYPRE_Int failed = 0;
+      if (failure == 1)
+      {
+         failed = hypre_ILU60InvalidateCapture(stream) != hypre_GraphSuccess;
+      }
+      else
+      {
+         failed = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs);
+      }
+      /* End every capture we own, including an invalidated capture. */
+      hypre_GraphError ended = hypre_GraphTryStreamEndCapture(stream, &g->graph);
+      if (g->graph) { hypre_ILU60GraphCount(1); }
+      failed |= ended != hypre_GraphSuccess;
+      if (!failed)
+      {
+         failed = hypre_GraphTryInstantiate(&g->graph_exec, failure == 2 ? NULL : g->graph)
+                  != hypre_GraphSuccess;
+         if (g->graph_exec) { hypre_ILU60GraphCount(1); }
+      }
+      if (failed)
+      {
+         if (hypre_ILU60CacheReset(cache) != hypre_GraphSuccess)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 partial graph cleanup failed; ownership retained");
+            return hypre_error_flag;
+         }
+         (void) hypre_ILU60LastError();
+      }
+      else
+      {
+         cache->stream = stream;
+         cache->ia = hypre_CSRMatrixI(A); cache->ja = hypre_CSRMatrixJ(A);
+         cache->values = hypre_CSRMatrixData(A); cache->rows = rows;
+         cache->offsets = offsets; cache->rhs = rhs; cache->num_levels = num_levels;
+         g->is_ready = 1;
+      }
+   }
+   else if (!g->is_ready)
+   {
+      (void) hypre_ILU60LastError(); /* handled begin-capture failure */
+   }
+   if (g->is_ready)
+   {
+      HYPRE_Int reject_launch = cache->test_failure == 3;
+      cache->test_failure = 0;
+      if (hypre_GraphTryLaunch(reject_launch ? NULL : g->graph_exec, stream) != hypre_GraphSuccess)
+      {
+         g->is_ready = 0;
+         (void) hypre_ILU60LastError();
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 graph launch failed; correction was not retried");
+      }
+      return hypre_error_flag;
+   }
+#endif
+   if (hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs))
+   {
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
+   }
+#else
+   hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 triangular solves require CUDA/HIP");
+#endif
+   return hypre_error_flag;
+}
+
 /* Apply a correction in factor coordinates, one kernel per level. */
 HYPRE_Int
-hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
+hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix  *A,
                                hypre_CSRMatrix     *matLU_d,
                                hypre_ParVector     *f,
                                hypre_ParVector     *u,
@@ -1277,12 +1382,12 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
                     HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
    }
 
-   hypre_CSRMatrixILU0LevelSetLSolve(matLU_d, num_low_levels, low_set_offsets,
-                                     d_low_set_rows, utemp_data);
+   hypre_ILU60TriangularSolve(owner, 0, matLU_d, num_low_levels, low_set_offsets,
+                              d_low_set_rows, utemp_data);
    if (!hypre_error_flag)
    {
-      hypre_CSRMatrixILU0LevelSetUSolve(matLU_d, num_upp_levels, upp_set_offsets,
-                                        d_upp_set_rows, utemp_data);
+      hypre_ILU60TriangularSolve(owner, 1, matLU_d, num_upp_levels, upp_set_offsets,
+                                 d_upp_set_rows, utemp_data);
    }
 
    if (hypre_error_flag)

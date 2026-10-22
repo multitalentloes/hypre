@@ -14,7 +14,8 @@ ctest --output-on-failure -R '^test_ilu60($|_)'
 `test_ilu60` compares factors and corrections against an independent host
 ILU0 oracle, exercises identity/RCM ordering, asymmetric and unsorted patterns,
 invalid input and pivots, and repeated setup/destruction. `test_ilu60_stream`
-checks stream/RHS changes and uncaptured scalar substitutions. `test_ilu60_mpi`
+checks stream/RHS changes, captured pointer identities, failure recovery, native
+graph handle accounting, and uncaptured substitutions. `test_ilu60_mpi`
 uses three ranks to cover an empty rank, collective failure agreement, and
 successful recovery after a rank-local failed setup. Stream tests require a
 CUDA/HIP build; the MPI test additionally requires an MPI build and launcher.
@@ -38,7 +39,7 @@ Allocation accounting requires a separate build with
 `HYPRE_ENABLE_MEMORY_TRACKER=ON`. The default test then checks live allocation
 counts across repeated setups and destruction; without the tracker it reports
 that accounting remains pending. Keep tracker overhead out of timing builds.
-Release and Debug builds use the same scalar, per-level execution path.
+Release captures and replays the scalar level traversal; Debug executes it uncaptured.
 Passing these tests does not replace device memory/race sanitizer validation.
 
 # Implementation and performance scope
@@ -53,7 +54,12 @@ sorted off-diagonals, upper-row suffix metadata, and ordered sparse updates.
 Asymmetric factors retain initial identity/RCM coordinates. Structurally
 symmetric factors use lower-level storage ordering with a composed solve
 permutation; reverse dependency cohorts provide the upper schedule. Each dependency level uses a separate scalar
-kernel launch. Setup and destruction synchronize before retiring owned storage.
+kernel launch. Release replays captured level traversals through the checked
+shared graph API. The ILU-owned cache tracks stream, CSR, schedules and RHS
+identities. Capture/instantiation failures retire partial graphs and execute
+uncaptured; a failed launch returns an error without retrying a possibly partial
+substitution. Setup and destruction synchronize before retiring owned storage;
+failed destruction retains handles and referenced storage for a later retry.
 
 Compare type 60 with type 0 using matching Release builds, solver settings,
 precision, architecture, ordering, MPI, and allocators. Measure complete
