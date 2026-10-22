@@ -553,33 +553,167 @@ struct hypre_DeviceGraphData
    HYPRE_Int       is_ready; /* 0 = not yet captured, 1 = ready for graph launch */
 };
 
+/* Checked operations return native errors without diagnostics or changes to
+ * hypre's error state. Recovery, including runtime error consumption, belongs
+ * to the caller. All addresses referenced by captured work must remain valid
+ * until the last replay completes. End an owned capture even when invalidated.
+ * Publish is_ready only after instantiation succeeds. Synchronize outstanding
+ * work before reset; reset neither synchronizes nor frees the handler. Never
+ * rerun work automatically after a failed launch: it may have partly executed. */
+typedef hypre_DeviceGraphData hypre_GPUGraphHandler;
 #if defined(HYPRE_USING_CUDA)
+typedef cudaError_t hypre_GraphError;
+#define hypre_GraphSuccess cudaSuccess
+#else
+typedef hipError_t hypre_GraphError;
+#define hypre_GraphSuccess hipSuccess
+#endif
+
+static inline hypre_GraphError
+hypre_GraphTryStreamBeginCapture(
+#if defined(HYPRE_USING_CUDA)
+   cudaStream_t stream
+#else
+   hipStream_t stream
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+   return cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
+#else
+   return hipStreamBeginCapture(stream, hipStreamCaptureModeThreadLocal);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GraphTryStreamEndCapture(
+#if defined(HYPRE_USING_CUDA)
+   cudaStream_t stream, cudaGraph_t *graph
+#else
+   hipStream_t stream, hipGraph_t *graph
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+   return cudaStreamEndCapture(stream, graph);
+#else
+   return hipStreamEndCapture(stream, graph);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GraphTryInstantiate(
+#if defined(HYPRE_USING_CUDA)
+   cudaGraphExec_t *graph_exec, cudaGraph_t graph
+#else
+   hipGraphExec_t *graph_exec, hipGraph_t graph
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+#if CUDART_VERSION >= 12000
+   return cudaGraphInstantiate(graph_exec, graph, 0);
+#else
+   return cudaGraphInstantiate(graph_exec, graph, NULL, NULL, 0);
+#endif
+#else
+   return hipGraphInstantiate(graph_exec, graph, NULL, NULL, 0);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GraphTryLaunch(
+#if defined(HYPRE_USING_CUDA)
+   cudaGraphExec_t graph_exec, cudaStream_t stream
+#else
+   hipGraphExec_t graph_exec, hipStream_t stream
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+   return cudaGraphLaunch(graph_exec, stream);
+#else
+   return hipGraphLaunch(graph_exec, stream);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GraphTryDestroy(
+#if defined(HYPRE_USING_CUDA)
+   cudaGraph_t graph
+#else
+   hipGraph_t graph
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+   return cudaGraphDestroy(graph);
+#else
+   return hipGraphDestroy(graph);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GraphTryExecDestroy(
+#if defined(HYPRE_USING_CUDA)
+   cudaGraphExec_t graph_exec
+#else
+   hipGraphExec_t graph_exec
+#endif
+)
+{
+#if defined(HYPRE_USING_CUDA)
+   return cudaGraphExecDestroy(graph_exec);
+#else
+   return hipGraphExecDestroy(graph_exec);
+#endif
+}
+
+static inline hypre_GraphError
+hypre_GPUGraphReset(hypre_GPUGraphHandler *handler)
+{
+   hypre_GraphError error;
+   if (!handler) { return hypre_GraphSuccess; }
+   handler->is_ready = 0;
+   if (handler->graph_exec)
+   {
+      error = hypre_GraphTryExecDestroy(handler->graph_exec);
+      if (error != hypre_GraphSuccess) { return error; }
+      handler->graph_exec = NULL;
+   }
+   if (handler->graph)
+   {
+      error = hypre_GraphTryDestroy(handler->graph);
+      if (error != hypre_GraphSuccess) { return error; }
+      handler->graph = NULL;
+   }
+   return hypre_GraphSuccess;
+}
+
+#if defined(HYPRE_USING_CUDA)
+#define hypre_GraphVendorCall(call) HYPRE_CUDA_CALL(call)
+#else
+#define hypre_GraphVendorCall(call) HYPRE_HIP_CALL(call)
+#endif
 #define hypre_DeviceGraphStreamBeginCapture(stream) \
-   HYPRE_CUDA_CALL( cudaStreamBeginCapture((stream), cudaStreamCaptureModeThreadLocal) )
+   hypre_GraphVendorCall(hypre_GraphTryStreamBeginCapture(stream))
+#define hypre_GraphStreamBeginCapture(stream) hypre_DeviceGraphStreamBeginCapture(stream)
 #define hypre_DeviceGraphStreamEndCapture(stream, graph) \
-   HYPRE_CUDA_CALL( cudaStreamEndCapture((stream), (graph)) )
+   hypre_GraphVendorCall(hypre_GraphTryStreamEndCapture(stream, graph))
+#define hypre_GraphStreamEndCapture(stream, graph) hypre_DeviceGraphStreamEndCapture(stream, graph)
 #define hypre_DeviceGraphInstantiate(graph_exec, graph) \
-   HYPRE_CUDA_CALL( cudaGraphInstantiate((graph_exec), (graph), 0) )
+   hypre_GraphVendorCall(hypre_GraphTryInstantiate(graph_exec, graph))
+#define hypre_GraphInstantiate(graph_exec, graph) hypre_DeviceGraphInstantiate(graph_exec, graph)
 #define hypre_DeviceGraphLaunch(graph_exec, stream) \
-   HYPRE_CUDA_CALL( cudaGraphLaunch((graph_exec), (stream)) )
+   hypre_GraphVendorCall(hypre_GraphTryLaunch(graph_exec, stream))
+#define hypre_GraphLaunch(graph_exec, stream) hypre_DeviceGraphLaunch(graph_exec, stream)
 #define hypre_DeviceGraphDestroy(graph) \
-   HYPRE_CUDA_CALL( cudaGraphDestroy(graph) )
+   hypre_GraphVendorCall(hypre_GraphTryDestroy(graph))
+#define hypre_GraphDestroy(graph) hypre_DeviceGraphDestroy(graph)
 #define hypre_DeviceGraphExecDestroy(graph_exec) \
-   HYPRE_CUDA_CALL( cudaGraphExecDestroy(graph_exec) )
-#else  /* HIP */
-#define hypre_DeviceGraphStreamBeginCapture(stream) \
-   HYPRE_HIP_CALL( hipStreamBeginCapture((stream), hipStreamCaptureModeThreadLocal) )
-#define hypre_DeviceGraphStreamEndCapture(stream, graph) \
-   HYPRE_HIP_CALL( hipStreamEndCapture((stream), (graph)) )
-#define hypre_DeviceGraphInstantiate(graph_exec, graph) \
-   HYPRE_HIP_CALL( hipGraphInstantiate((graph_exec), (graph), NULL, NULL, 0) )
-#define hypre_DeviceGraphLaunch(graph_exec, stream) \
-   HYPRE_HIP_CALL( hipGraphLaunch((graph_exec), (stream)) )
-#define hypre_DeviceGraphDestroy(graph) \
-   HYPRE_HIP_CALL( hipGraphDestroy(graph) )
-#define hypre_DeviceGraphExecDestroy(graph_exec) \
-   HYPRE_HIP_CALL( hipGraphExecDestroy(graph_exec) )
-#endif  /* CUDA vs HIP */
+   hypre_GraphVendorCall(hypre_GraphTryExecDestroy(graph_exec))
+#define hypre_GraphExecDestroy(graph_exec) hypre_DeviceGraphExecDestroy(graph_exec)
+
 
 #endif  /* HYPRE_USING_CUDA || HYPRE_USING_HIP */
 
