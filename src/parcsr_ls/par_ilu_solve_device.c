@@ -1291,6 +1291,42 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
             return hypre_error_flag;
          }
          (void) hypre_ILU60LastError();
+#if defined(HYPRE_USING_HIP)
+         hipStreamCaptureStatus status;
+         if (hipStreamIsCapturing(stream, &status) != hipSuccess)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 could not query failed capture state");
+            return hypre_error_flag;
+         }
+         if (status == hipStreamCaptureStatusInvalidated)
+         {
+            /* Some HIP runtimes leave an ended owned capture invalidated.
+             * A new empty capture restores the stream; discard it, never replay. */
+            if (hypre_GraphTryStreamBeginCapture(stream) != hypre_GraphSuccess)
+            {
+               hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 could not recover invalidated capture");
+               return hypre_error_flag;
+            }
+            hypre_GraphError recovered = hypre_GraphTryStreamEndCapture(stream, &g->graph);
+            if (g->graph) { hypre_ILU60GraphCount(1); }
+            if (recovered != hypre_GraphSuccess || hypre_ILU60CacheReset(cache) != hypre_GraphSuccess)
+            {
+               hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 recovery graph cleanup failed; ownership retained");
+               return hypre_error_flag;
+            }
+            if (hipStreamIsCapturing(stream, &status) != hipSuccess)
+            {
+               hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 could not query recovered capture state");
+               return hypre_error_flag;
+            }
+         }
+         if (status != hipStreamCaptureStatusNone)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 capture is still active; fallback withheld");
+            return hypre_error_flag;
+         }
+         (void) hypre_ILU60LastError();
+#endif
       }
       else
       {
@@ -1318,7 +1354,8 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
       return hypre_error_flag;
    }
 #endif
-   if (hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs))
+   HYPRE_Int launch_status = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs);
+   if (launch_status)
    {
       hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
    }
