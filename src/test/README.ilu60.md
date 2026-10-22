@@ -39,7 +39,11 @@ Allocation accounting requires a separate build with
 `HYPRE_ENABLE_MEMORY_TRACKER=ON`. The default test then checks live allocation
 counts across repeated setups and destruction; without the tracker it reports
 that accounting remains pending. Keep tracker overhead out of timing builds.
-Release captures and replays the scalar level traversal; Debug executes it uncaptured.
+The oracle exercises graph, whole-system single-block, then graph execution on
+the same setup. Width boundaries include 1023/1024/1025, interrupted batches,
+and failed pivots inside batches. Release captures and replays eligible level
+traversals; Debug executes them uncaptured. Whole-system single-block solves run
+directly in both configurations.
 Passing these tests does not replace device memory/race sanitizer validation.
 
 # Implementation and performance scope
@@ -53,10 +57,14 @@ The implementation keeps the zero-fill pattern and serial pivot order. It uses
 sorted off-diagonals, upper-row suffix metadata, and ordered sparse updates.
 Asymmetric factors retain initial identity/RCM coordinates. Structurally
 symmetric factors use lower-level storage ordering with a composed solve
-permutation; reverse dependency cohorts provide the upper schedule. Each dependency level uses a separate scalar
-kernel launch. Release replays captured level traversals through the checked
+permutation; reverse dependency cohorts provide the upper schedule. Consecutive
+levels fitting a default block share a kernel, with all threads reaching a
+barrier after each level, including rows reporting a factorization failure.
+When every lower and upper level fits within the backend block capacity, a
+single block traverses each complete triangular schedule. Wider levels retain
+multiple-block scalar row execution. Release replays captured traversals through the checked
 shared graph API. The ILU-owned cache tracks stream, CSR, schedules and RHS
-identities. Capture/instantiation failures retire partial graphs and execute
+identities, including both host and device schedule offsets. Capture/instantiation failures retire partial graphs and execute
 uncaptured; a failed launch returns an error without retrying a possibly partial
 substitution. Setup and destruction synchronize before retiring owned storage;
 failed destruction retains handles and referenced storage for a later retry.

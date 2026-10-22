@@ -198,6 +198,9 @@ hypre_ILULevelSetCleanup(hypre_ParILUData *ilu_data)
 #endif
    hypre_TFree(ilu_data->low_level_set_offsets, HYPRE_MEMORY_HOST);
    hypre_TFree(ilu_data->upp_level_set_offsets, HYPRE_MEMORY_HOST);
+   hypre_TFree(ilu_data->d_low_level_set_offsets, HYPRE_MEMORY_DEVICE);
+   hypre_TFree(ilu_data->d_upp_level_set_offsets, HYPRE_MEMORY_DEVICE);
+   ilu_data->ls_singleblock = 0;
    hypre_TFree(ilu_data->d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
    hypre_TFree(ilu_data->d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
    hypre_TFree(ilu_data->combined_perm_d, HYPRE_MEMORY_DEVICE);

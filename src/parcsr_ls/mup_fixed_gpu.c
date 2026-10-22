@@ -283,9 +283,9 @@ hypre_ILU60GraphCount( HYPRE_Int delta )
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
-hypre_ILU60TriangularSolve( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs )
+hypre_ILU60TriangularSolve( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *rhs )
 {
-   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILU60TriangularSolve)( owner, upper, A, num_levels, offsets, rows, rhs );
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_ILU60TriangularSolve)( owner, upper, A, num_levels, offsets, d_offsets, rows, rhs );
 }
 
 /*--------------------------------------------------------------------------*/

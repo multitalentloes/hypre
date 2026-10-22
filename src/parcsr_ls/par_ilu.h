@@ -93,6 +93,10 @@ typedef struct hypre_ParILUData_struct
    void                 *ls_graph[2]; /* private hypre_ILU60GraphCache, L then U */
 #endif
 
+   HYPRE_Int             ls_singleblock; /* max L/U width when every level fits one block */
+   HYPRE_Int            *d_low_level_set_offsets;
+   HYPRE_Int            *d_upp_level_set_offsets;
+
    /* Level-set data for ilu_type 60 triangular solves */
    HYPRE_Int             num_low_levels;           /* number of lower triangular level sets */
    HYPRE_Int            *low_level_set_offsets;    /* host array, length num_low_levels+1 */

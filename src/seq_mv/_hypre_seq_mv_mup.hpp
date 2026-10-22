@@ -140,11 +140,11 @@ HYPRE_Int
 hypre_CSRMatrixILU0_long_dbl( hypre_CSRMatrix *A );
 
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetFactorization_flt( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows );
+hypre_CSRMatrixILU0LevelSetFactorization_flt( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows );
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetFactorization_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows );
+hypre_CSRMatrixILU0LevelSetFactorization_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows );
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetFactorization_long_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows );
+hypre_CSRMatrixILU0LevelSetFactorization_long_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows );
 
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolve_flt( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *f );
@@ -154,11 +154,11 @@ HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolve_long_dbl( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_long_double *f );
 
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetTraverse_flt( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *rhs );
+hypre_CSRMatrixILU0LevelSetTraverse_flt( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_float *rhs, HYPRE_Int block_capacity );
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetTraverse_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_double *rhs );
+hypre_CSRMatrixILU0LevelSetTraverse_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_double *rhs, HYPRE_Int block_capacity );
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetTraverse_long_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_long_double *rhs );
+hypre_CSRMatrixILU0LevelSetTraverse_long_dbl( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_long_double *rhs, HYPRE_Int block_capacity );
 
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetUSolve_flt( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *f );

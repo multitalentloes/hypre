@@ -17,7 +17,7 @@ struct hypre_ILU60GraphCache
 {
    hypre_GPUGraphHandler handler;
    hypre_DeviceStream stream;
-   const void *ia, *ja, *values, *rows, *offsets, *rhs;
+   const void *ia, *ja, *values, *rows, *offsets, *device_offsets, *rhs;
    HYPRE_Int num_levels;
    /* Private one-shot fault injection for lifecycle tests, never a public API:
     * 1 invalidates owned capture, 2 rejects instantiate, 3 rejects launch. */

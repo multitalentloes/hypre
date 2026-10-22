@@ -252,11 +252,11 @@ HYPRE_Int
 hypre_ILU60GraphCount_long_dbl( HYPRE_Int delta );
 
 HYPRE_Int
-hypre_ILU60TriangularSolve_flt( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_float *rhs );
+hypre_ILU60TriangularSolve_flt( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_float *rhs );
 HYPRE_Int
-hypre_ILU60TriangularSolve_dbl( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_double *rhs );
+hypre_ILU60TriangularSolve_dbl( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_double *rhs );
 HYPRE_Int
-hypre_ILU60TriangularSolve_long_dbl( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, hypre_long_double *rhs );
+hypre_ILU60TriangularSolve_long_dbl( hypre_ParILUData *owner, HYPRE_Int upper, hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, hypre_long_double *rhs );
 
 HYPRE_Int
 hypre_ILUApplyLowerJacIterDevice_flt( hypre_CSRMatrix *A, hypre_Vector *input, hypre_Vector *work, hypre_Vector *output, HYPRE_Int lower_jacobi_iters );

@@ -44,7 +44,7 @@ static void numerical_check(double actual, double expected, double tolerance,
       printf("  ordering=%d path=%s rhs=%d stream=%d row=%d "
              "actual=%.17g expected=%.17g error=%.17g limit=%.17g\n",
              case_ordering, case_path < 0 ? "setup" :
-             (case_path ? "single-block" : "graph"), case_rhs,
+             (case_path == 1 ? "single-block" : "graph"), case_rhs,
              hypre_HandleComputeStreamNum(hypre_handle()),
              row, actual, expected, error, tolerance);
    }
@@ -335,6 +335,7 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
    hypre_ParCSRMatrix *A = matrix(n, a, mask);
    hypre_ParVector *b = vector(n), *u = vector(n);
    int i, j, k, rhs, path, error, before = failures;
+   HYPRE_Int singleblock_width = 0;
    HYPRE_Int *perm = (HYPRE_Int *) calloc(n ? n : 1, sizeof(HYPRE_Int));
    HYPRE_Int *storage = (HYPRE_Int *) calloc(n ? n : 1, sizeof(HYPRE_Int));
    double *f = (double *) calloc(n * n ? n*n : 1, sizeof(double));
@@ -458,8 +459,10 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
             hypre_ParILUDataDLowLevelSetRows(data), 1, seed);
    schedule(F, hypre_ParILUDataNumUppLevels(data), hypre_ParILUDataUppLevelSetOffsets(data),
             hypre_ParILUDataDUppLevelSetRows(data), 0, seed);
-   for (path = 0; path < 1; path++)
+   singleblock_width = data->ls_singleblock;
+   for (path = 0; path < 3; path++)
    {
+      data->ls_singleblock = path == 1 ? singleblock_width : 0;
       for (rhs = 0; rhs < 3; rhs++)
       {
          case_path = path; case_rhs = rhs;
@@ -500,6 +503,7 @@ static void run(HYPRE_Solver solver, int n, double *a, int *mask,
             }
       }
    }
+   data->ls_singleblock = singleblock_width;
 done:
    if (failures != before)
    {
@@ -610,9 +614,12 @@ static void graph_lifecycle(void)
                          (HYPRE_ParVector) u), "graph lifecycle setup", 3, 0);
    if (HYPRE_GetError()) { HYPRE_ClearAllErrors(); goto done; }
    {
+      data->ls_singleblock = 0;
       hypre_CSRMatrix *factor = hypre_ParILUDataMatBILUDevice(data);
       HYPRE_Int levels[2] = {data->num_low_levels, data->num_upp_levels};
       HYPRE_Int *original_rows[2] = {data->d_low_level_set_rows, data->d_upp_level_set_rows};
+      HYPRE_Int *original_device_offsets[2] = {data->d_low_level_set_offsets, data->d_upp_level_set_offsets};
+      HYPRE_Int *device_offsets[2] = {NULL, NULL};
       HYPRE_Int *original_offsets[2] = {data->low_level_set_offsets, data->upp_level_set_offsets};
       copy = hypre_CSRMatrixClone_v2(factor, 1, HYPRE_MEMORY_DEVICE);
       for (int upper = 0; upper < 2; upper++)
@@ -622,6 +629,9 @@ static void graph_lifecycle(void)
          offsets[upper] = hypre_TAlloc(HYPRE_Int, levels[upper] + 1, HYPRE_MEMORY_HOST);
          hypre_TMemcpy(rows[upper], original_rows[upper], HYPRE_Int, 3,
                        HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
+         device_offsets[upper] = hypre_TAlloc(HYPRE_Int, levels[upper] + 1, HYPRE_MEMORY_DEVICE);
+         hypre_TMemcpy(device_offsets[upper], original_device_offsets[upper], HYPRE_Int,
+                       levels[upper] + 1, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
          memcpy(offsets[upper], original_offsets[upper], (levels[upper] + 1) * sizeof(HYPRE_Int));
       }
       for (int rep = 0; rep < 12; rep++)
@@ -642,7 +652,8 @@ static void graph_lifecycle(void)
          {
             HYPRE_Int *r = rep == 5 ? rows[upper] : original_rows[upper];
             HYPRE_Int *o = rep == 6 ? offsets[upper] : original_offsets[upper];
-            check(!hypre_ILU60TriangularSolve(data, upper, &view, levels[upper], o, r, rhs),
+            HYPRE_Int *d = rep == 9 ? device_offsets[upper] : original_device_offsets[upper];
+            check(!hypre_ILU60TriangularSolve(data, upper, &view, levels[upper], o, d, r, rhs),
                   "graph lifecycle substitution", 3, rep);
 #if !defined(HYPRE_DEBUG)
             auto cache = (hypre_ILU60GraphCache *) data->ls_graph[upper];
@@ -650,7 +661,7 @@ static void graph_lifecycle(void)
                   cache->stream == hypre_HandleComputeStream(hypre_handle()) &&
                   cache->ia == hypre_CSRMatrixI(&view) && cache->ja == hypre_CSRMatrixJ(&view) &&
                   cache->values == hypre_CSRMatrixData(&view) && cache->rows == r &&
-                  cache->offsets == o && cache->rhs == rhs, "current captured identities", 3, rep);
+                  cache->offsets == o && cache->device_offsets == d && cache->rhs == rhs, "current captured identities", 3, rep);
 #endif
          }
          hypre_SyncDevice();
@@ -661,6 +672,11 @@ static void graph_lifecycle(void)
          }
          check(hypre_ILU60GraphCount(0) <= graphs_before + 4, "bounded native graph handles", 3, rep);
       }
+      hypre_SyncDevice();
+      for (int upper = 0; upper < 2; upper++)
+      {
+         hypre_TFree(device_offsets[upper], HYPRE_MEMORY_DEVICE);
+      }
 #if !defined(HYPRE_DEBUG)
       for (int failure = 1; failure <= 3; failure++)
       {
@@ -669,7 +685,7 @@ static void graph_lifecycle(void)
          cache->test_failure = failure;
          host[0] = 4; host[1] = 6; host[2] = 4;
          hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
-         int error = hypre_ILU60TriangularSolve(data, 0, factor, levels[0], original_offsets[0],
+         int error = hypre_ILU60TriangularSolve(data, 0, factor, levels[0], original_offsets[0], original_device_offsets[0],
                                                 original_rows[0], scratch[0]);
          check((error != 0) == (failure == 3), "capture/instantiate fallback and launch failure", 3,
                failure);
@@ -687,7 +703,7 @@ static void graph_lifecycle(void)
          hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
          for (int upper = 0; upper < 2; upper++)
          {
-            check(!hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper],
+            check(!hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper], original_device_offsets[upper],
                                               original_rows[upper], scratch[0]), "graph failure recovery", 3, failure);
          }
          hypre_SyncDevice();
@@ -699,7 +715,7 @@ static void graph_lifecycle(void)
       host[0] = 4; host[1] = 6; host[2] = 4;
       hypre_TMemcpy(scratch[0], host, HYPRE_Complex, 3, HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
       for (int upper = 0; upper < 2; upper++)
-      { hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper], original_rows[upper], scratch[0]); }
+      { hypre_ILU60TriangularSolve(data, upper, factor, levels[upper], original_offsets[upper], original_device_offsets[upper], original_rows[upper], scratch[0]); }
       printf("ILU graph lifecycle: Release capture/replay and failure recovery exercised\n");
 #else
       check(!data->ls_graph[0] && !data->ls_graph[1], "Debug uses uncaptured traversal", 3, 0);

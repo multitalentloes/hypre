@@ -171,6 +171,12 @@ preserves triangular membership, including for stored zeros. A zero or nonfinite
 finite nonzero pivots are accepted without a magnitude threshold, so callers
 should still assess numerical conditioning and the final residual.
 
+Consecutive narrow levels share a synchronized thread block. If every lower
+and upper level fits in one block, each complete triangular solve uses one
+block; otherwise Release builds cache the level traversal in a GPU graph.
+Debug builds execute that traversal uncaptured. Long rows retain scalar
+processing within each row.
+
 Input validation and level scheduling add setup cost. The benefit of this
 method depends on the matrix, dependency levels, and number of preconditioner
 applications. Compare complete setup and converged solve times, iteration

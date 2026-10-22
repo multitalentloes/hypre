@@ -2257,6 +2257,6 @@ HYPRE_Int hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMa
 #if defined(HYPRE_USING_GPU)
 HYPRE_Int hypre_ILU60GraphCount(HYPRE_Int delta);
 HYPRE_Int hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
-                                     hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows,
+                                     hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows,
                                      HYPRE_Complex *rhs);
 #endif

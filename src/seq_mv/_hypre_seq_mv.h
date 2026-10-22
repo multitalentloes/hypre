@@ -703,7 +703,7 @@ HYPRE_Int hypre_CSRMatrixComputeLevelSetsHost(hypre_CSRMatrix *A,
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int hypre_CSRMatrixMoveDiagFirstOrderedDevice(hypre_CSRMatrix *A);
 HYPRE_Int hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
-                                                   HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows);
+                                                   HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows);
 HYPRE_Int hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A,
                                             HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *f);
 HYPRE_Int hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A,
@@ -720,7 +720,7 @@ HYPRE_Int hypre_CSRMatrixComputeLevelSetsSymmetricHost(hypre_CSRMatrix *A,
 
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 HYPRE_Int hypre_CSRMatrixILU0LevelSetTraverse(hypre_CSRMatrix *A, HYPRE_Int upper,
-                                              HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs);
+                                              HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *rhs, HYPRE_Int block_capacity);
 #endif
 /******************************************************************************
  * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other

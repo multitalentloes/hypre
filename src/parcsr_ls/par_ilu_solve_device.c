@@ -1230,10 +1230,19 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
 HYPRE_Int
 hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
                            hypre_CSRMatrix *A, HYPRE_Int num_levels,
-                           HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs)
+                           HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *rhs)
 {
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
    if (!hypre_CSRMatrixNumRows(A)) { return hypre_error_flag; }
+   if (owner->ls_singleblock && d_offsets)
+   {
+      if (hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets,
+                                              d_offsets, rows, rhs, HYPRE_MAX_NTHREADS_BLOCK))
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 single-block triangular launch failed");
+      }
+      return hypre_error_flag;
+   }
 #if !defined(HYPRE_DEBUG)
    auto stream = hypre_HandleComputeStream(hypre_handle());
    auto cache = (hypre_ILU60GraphCache *) owner->ls_graph[upper];
@@ -1246,7 +1255,8 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
    auto g = &cache->handler;
    if (g->is_ready && (cache->stream != stream || cache->ia != hypre_CSRMatrixI(A) ||
                        cache->ja != hypre_CSRMatrixJ(A) || cache->values != hypre_CSRMatrixData(A) ||
-                       cache->offsets != offsets || cache->rows != rows || cache->rhs != rhs ||
+                       cache->offsets != offsets || cache->device_offsets != d_offsets || cache->rows != rows ||
+                       cache->rhs != rhs ||
                        cache->num_levels != num_levels))
    {
       g->is_ready = 0;
@@ -1271,7 +1281,8 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
       }
       else
       {
-         failed = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs);
+         failed = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, d_offsets, rows, rhs,
+                                                      hypre_GetDefaultDeviceBlockDimension().x);
       }
       /* End every capture we own, including an invalidated capture. */
       hypre_GraphError ended = hypre_GraphTryStreamEndCapture(stream, &g->graph);
@@ -1333,7 +1344,8 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
          cache->stream = stream;
          cache->ia = hypre_CSRMatrixI(A); cache->ja = hypre_CSRMatrixJ(A);
          cache->values = hypre_CSRMatrixData(A); cache->rows = rows;
-         cache->offsets = offsets; cache->rhs = rhs; cache->num_levels = num_levels;
+         cache->device_offsets = d_offsets; cache->offsets = offsets; cache->rhs = rhs;
+         cache->num_levels = num_levels;
          g->is_ready = 1;
       }
    }
@@ -1354,7 +1366,9 @@ hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
       return hypre_error_flag;
    }
 #endif
-   HYPRE_Int launch_status = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets, rows, rhs);
+   HYPRE_Int launch_status = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets,
+                                                                 d_offsets, rows, rhs,
+                                                                 hypre_GetDefaultDeviceBlockDimension().x);
    if (launch_status)
    {
       hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
@@ -1420,11 +1434,11 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix  *A,
    }
 
    hypre_ILU60TriangularSolve(owner, 0, matLU_d, num_low_levels, low_set_offsets,
-                              d_low_set_rows, utemp_data);
+                              owner->d_low_level_set_offsets, d_low_set_rows, utemp_data);
    if (!hypre_error_flag)
    {
       hypre_ILU60TriangularSolve(owner, 1, matLU_d, num_upp_levels, upp_set_offsets,
-                                 d_upp_set_rows, utemp_data);
+                                 owner->d_upp_level_set_offsets, d_upp_set_rows, utemp_data);
    }
 
    if (hypre_error_flag)

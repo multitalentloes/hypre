@@ -192,7 +192,9 @@
 #undef hypre_SeqVectorSumEltsHost
 #undef hypre_CSRMatrixSpMVAnalysisDevice
 #undef hypreGPUKernel_CSRMatrixILU0LevelSetFactorize
+#undef hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock
 #undef hypreGPUKernel_CSRMatrixILU0LevelSetSolve
+#undef hypreGPUKernel_CSRMatrixILU0LevelSetSolveSingleBlock
 #undef hypreGPUKernel_CSRMatrixILU0UpperStarts
 #undef hypreGPUKernel_CSRMoveDiagFirstOrdered
 #undef hypre_CSRMatrixAddDevice

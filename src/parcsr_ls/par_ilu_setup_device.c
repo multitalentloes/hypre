@@ -305,10 +305,15 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          hypre_TFree(h_low_level_sets, HYPRE_MEMORY_HOST);
          hypre_TFree(h_upp_level_sets, HYPRE_MEMORY_HOST);
 
+         HYPRE_Int *d_low_set_offsets = hypre_TAlloc(HYPRE_Int, low_num_levels + 1,
+                                                     HYPRE_MEMORY_DEVICE);
+         hypre_TMemcpy(d_low_set_offsets, h_low_set_offsets, HYPRE_Int, low_num_levels + 1,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+
          /* Run level-set ILU0 factorization on the permuted device matrix */
          HYPRE_ANNOTATE_REGION_BEGIN("ILU60Factorization");
          hypre_CSRMatrixILU0LevelSetFactorization(A_diag, low_num_levels,
-                                                  h_low_set_offsets,
+                                                  h_low_set_offsets, d_low_set_offsets,
                                                   d_low_level_set_rows);
          HYPRE_ANNOTATE_REGION_END("ILU60Factorization");
 
@@ -316,6 +321,7 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          {
             hypre_TFree(h_low_set_offsets, HYPRE_MEMORY_HOST);
             hypre_TFree(h_upp_set_offsets, HYPRE_MEMORY_HOST);
+            hypre_TFree(d_low_set_offsets, HYPRE_MEMORY_DEVICE);
             hypre_TFree(d_low_level_set_rows, HYPRE_MEMORY_DEVICE);
             hypre_TFree(d_upp_level_set_rows, HYPRE_MEMORY_DEVICE);
             hypre_CSRMatrixDestroy(A_diag);
@@ -398,6 +404,14 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          }
 
          HYPRE_ANNOTATE_REGION_END("ILU60ReorderFactor");
+         HYPRE_Int *d_upp_set_offsets = hypre_TAlloc(HYPRE_Int, upp_num_levels + 1,
+                                                     HYPRE_MEMORY_DEVICE);
+         hypre_TMemcpy(d_upp_set_offsets, h_upp_set_offsets, HYPRE_Int, upp_num_levels + 1,
+                       HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
+         ilu_data->d_low_level_set_offsets = d_low_set_offsets;
+         ilu_data->d_upp_level_set_offsets = d_upp_set_offsets;
+         ilu_data->ls_singleblock = max_level_set_size <= HYPRE_MAX_NTHREADS_BLOCK ?
+                                    max_level_set_size : 0;
          /* Store level-set data in ilu_data for the solve phase */
          hypre_ParILUDataNumLowLevels(ilu_data)       = low_num_levels;
          hypre_ParILUDataLowLevelSetOffsets(ilu_data) = h_low_set_offsets;

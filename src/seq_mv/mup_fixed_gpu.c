@@ -155,9 +155,9 @@ hypre_CSRMatrixILU0( hypre_CSRMatrix *A )
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetFactorization( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows )
+hypre_CSRMatrixILU0LevelSetFactorization( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows )
 {
-   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetFactorization)( A, num_levels, offsets, rows );
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetFactorization)( A, num_levels, offsets, d_offsets, rows );
 }
 
 /*--------------------------------------------------------------------------*/
@@ -171,9 +171,9 @@ hypre_CSRMatrixILU0LevelSetLSolve( hypre_CSRMatrix *A, HYPRE_Int num_levels, HYP
 /*--------------------------------------------------------------------------*/
 
 HYPRE_Int
-hypre_CSRMatrixILU0LevelSetTraverse( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *rows, HYPRE_Complex *rhs )
+hypre_CSRMatrixILU0LevelSetTraverse( hypre_CSRMatrix *A, HYPRE_Int upper, HYPRE_Int num_levels, HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *rhs, HYPRE_Int block_capacity )
 {
-   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetTraverse)( A, upper, num_levels, offsets, rows, rhs );
+   return HYPRE_CURRENTPRECISION_FUNC(hypre_CSRMatrixILU0LevelSetTraverse)( A, upper, num_levels, offsets, d_offsets, rows, rhs, block_capacity );
 }
 
 /*--------------------------------------------------------------------------*/
