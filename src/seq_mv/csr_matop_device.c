@@ -4496,10 +4496,32 @@ hypre_CSRMatrixMoveDiagFirstOrderedDevice( hypre_CSRMatrix  *A )
    return hypre_error_flag;
 }
 
-/* One scalar row, preserving lower-pivot order and the zero-fill pattern. */
+/* Locate each upper-triangular suffix once, instead of rescanning a pivot
+ * row's lower prefix every time that row is used by another row. */
+__global__ void
+hypreGPUKernel_CSRMatrixILU0UpperStarts(hypre_DeviceItem &item,
+                                        HYPRE_Int        num_rows,
+                                        HYPRE_Int       *A_i,
+                                        HYPRE_Int       *A_j,
+                                        HYPRE_Int       *upper_starts)
+{
+   const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (row >= num_rows) { return; }
+   HYPRE_Int first = A_i[row] + 1;
+   HYPRE_Int last = A_i[row + 1];
+   while (first < last)
+   {
+      const HYPRE_Int middle = first + (last - first) / 2;
+      if (A_j[middle] < row) { first = middle + 1; }
+      else { last = middle; }
+   }
+   upper_starts[row] = first;
+}
+
+/* One scalar row with ordered sparse updates and exact pivot checks. */
 static __device__ __forceinline__ void
 hypre_ILU60FactorRow(HYPRE_Int row, HYPRE_Int *A_i, HYPRE_Int *A_j,
-                     HYPRE_Complex *A_data,
+                     HYPRE_Complex *A_data, HYPRE_Int *upper_starts,
                      HYPRE_Int *error_row)
 {
    const HYPRE_Int row_start = A_i[row];
@@ -4542,17 +4564,31 @@ hypre_ILU60FactorRow(HYPRE_Int row, HYPRE_Int *A_i, HYPRE_Int *A_j,
       /*
        * Update A[row,j] -= mult * A[k,j] for j > k common to both rows.
        */
-      for (HYPRE_Int pk = k_start + 1; pk < k_end; pk++)
+      HYPRE_Int pk = upper_starts[k];
+
+      /* All update columns are greater than k. Entries through k_pos
+       * therefore cannot match; do not rescan that prefix for every pivot. */
+      HYPRE_Int pi = k_pos + 1;
+      while (pk < k_end)
       {
          const HYPRE_Int j = A_j[pk];
-         if (j <= k) { continue; }
-         for (HYPRE_Int pi = row_start; pi < row_end; pi++)
+         if (j == row)
          {
-            if (A_j[pi] == j)
+            /* j is the diagonal position of row 'row' */
+            A_data[row_start] -= mult * A_data[pk];
+            pk++;
+         }
+         else
+         {
+            while (pi < row_end && A_j[pi] < j) { pi++; }
+            /* The separately stored diagonal can still match while j < row.
+             * Once j > row, exhausting the off-diagonal entries is final. */
+            if (pi == row_end && j > row) { break; }
+            if (pi < row_end && A_j[pi] == j)
             {
                A_data[pi] -= mult * A_data[pk];
-               break;
             }
+            pk++;
          }
       }
    }
@@ -4572,13 +4608,14 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem &item,
                                               HYPRE_Int *level_set_rows,
                                               HYPRE_Int *A_i, HYPRE_Int *A_j,
                                               HYPRE_Complex *A_data,
+                                              HYPRE_Int *upper_starts,
                                               HYPRE_Int *error_row)
 {
    const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
    if (tid < level_set_size)
    {
       hypre_ILU60FactorRow(level_set_rows[tid], A_i, A_j, A_data,
-                           error_row);
+                           upper_starts, error_row);
    }
 }
 
@@ -4600,6 +4637,15 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
 
    dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
 
+   HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A);
+   HYPRE_Int *d_upper_starts = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+   if (num_rows)
+   {
+      dim3 gDim = hypre_GetDefaultDeviceGridDimension(num_rows, "thread", bDim);
+      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0UpperStarts, gDim, bDim,
+                       num_rows, A_i, A_j, d_upper_starts);
+   }
+
    /*
     * Compute level sets sequentially.
     */
@@ -4619,13 +4665,14 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
          HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetFactorize, gDim, bDim,
                           level_set_size,
                           d_low_level_set_rows + level_offset,
-                          A_i, A_j, A_data, d_error_row);
+                          A_i, A_j, A_data, d_upper_starts, d_error_row);
       }
    }
 
    hypre_TMemcpy(&error_row, d_error_row, HYPRE_Int, 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
    /* Pool deallocation may not wait for asynchronous kernels/copies. */
    hypre_ForceSyncComputeStream();
+   hypre_TFree(d_upper_starts, HYPRE_MEMORY_DEVICE);
    hypre_TFree(d_error_row, HYPRE_MEMORY_DEVICE);
    if (error_row < hypre_CSRMatrixNumRows(A))
    {

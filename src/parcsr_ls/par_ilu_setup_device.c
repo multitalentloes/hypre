@@ -202,11 +202,11 @@ hypre_ILUSetupDevice(hypre_ParILUData       *ilu_data,
          HYPRE_Int  low_num_levels, upp_num_levels, max_level_set_size;
 
          HYPRE_ANNOTATE_REGION_BEGIN("ILU60HostLevels");
-         hypre_CSRMatrixComputeLevelSetsHost(A_diag_h,
-                                             &h_low_set_offsets, &h_low_level_sets,
-                                             &h_upp_set_offsets, &h_upp_level_sets,
-                                             &low_num_levels,    &upp_num_levels,
-                                             &max_level_set_size);
+         hypre_CSRMatrixComputeLevelSetsOrderedHost(A_diag_h,
+                                                    &h_low_set_offsets, &h_low_level_sets,
+                                                    &h_upp_set_offsets, &h_upp_level_sets,
+                                                    &low_num_levels,    &upp_num_levels,
+                                                    &max_level_set_size);
 
          HYPRE_ANNOTATE_REGION_END("ILU60HostLevels");
          hypre_CSRMatrixDestroy(A_diag_h);

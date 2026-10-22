@@ -58,6 +58,7 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
    for (HYPRE_Int row = 0; row < n && !bad; row++)
    {
       HYPRE_Int diag = 0, size;
+      HYPRE_Int ordered = 1, previous = -1;
       /* Bound both offsets before subtracting: a negative interior endpoint
        * can otherwise overflow even after a valid positive row prefix. */
       if (ia[row] < 0 || ia[row + 1] <= ia[row] || ia[row + 1] > nnz) { bad = 1; break; }
@@ -66,9 +67,18 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
       {
          bad |= ja[p] < 0 || ja[p] >= n;
          diag += ja[p] == row;
+         /* Ignore the diagonal's position: both numeric column order and
+          * diagonal-first storage can have strictly ordered off-diagonals. */
+         if (ja[p] != row)
+         {
+            ordered &= ja[p] > previous;
+            previous = ja[p];
+         }
       }
       bad |= diag != 1;
-      if (!bad)
+      /* Bounded, strictly increasing off-diagonals and one diagonal prove
+       * uniqueness without sorting. Retain the general unordered-row check. */
+      if (!bad && !ordered)
       {
          /* Scratch is row-sized, even if only one row in a large sparse
           * matrix is unordered. Reuse it until a wider unordered row appears. */
