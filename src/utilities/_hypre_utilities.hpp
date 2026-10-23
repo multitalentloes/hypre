@@ -797,110 +797,86 @@ typedef hypre_DeviceGraphData hypre_GPUGraphHandler;
 #if defined(HYPRE_USING_CUDA)
 typedef cudaError_t hypre_GraphError;
 #define hypre_GraphSuccess cudaSuccess
-#else
-typedef hipError_t hypre_GraphError;
-#define hypre_GraphSuccess hipSuccess
-#endif
 
 static inline hypre_GraphError
-hypre_GraphTryStreamBeginCapture(
-#if defined(HYPRE_USING_CUDA)
-   cudaStream_t stream
-#else
-   hipStream_t stream
-#endif
-)
+hypre_GraphTryStreamBeginCapture(cudaStream_t stream)
 {
-#if defined(HYPRE_USING_CUDA)
    return cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal);
-#else
-   return hipStreamBeginCapture(stream, hipStreamCaptureModeThreadLocal);
-#endif
 }
 
 static inline hypre_GraphError
-hypre_GraphTryStreamEndCapture(
-#if defined(HYPRE_USING_CUDA)
-   cudaStream_t stream, cudaGraph_t *graph
-#else
-   hipStream_t stream, hipGraph_t *graph
-#endif
-)
+hypre_GraphTryStreamEndCapture(cudaStream_t stream, cudaGraph_t *graph)
 {
-#if defined(HYPRE_USING_CUDA)
    return cudaStreamEndCapture(stream, graph);
-#else
-   return hipStreamEndCapture(stream, graph);
-#endif
 }
 
 static inline hypre_GraphError
-hypre_GraphTryInstantiate(
-#if defined(HYPRE_USING_CUDA)
-   cudaGraphExec_t *graph_exec, cudaGraph_t graph
-#else
-   hipGraphExec_t *graph_exec, hipGraph_t graph
-#endif
-)
+hypre_GraphTryInstantiate(cudaGraphExec_t *graph_exec, cudaGraph_t graph)
 {
-#if defined(HYPRE_USING_CUDA)
 #if CUDART_VERSION >= 12000
    return cudaGraphInstantiate(graph_exec, graph, 0);
 #else
    return cudaGraphInstantiate(graph_exec, graph, NULL, NULL, 0);
 #endif
-#else
-   return hipGraphInstantiate(graph_exec, graph, NULL, NULL, 0);
-#endif
 }
 
 static inline hypre_GraphError
-hypre_GraphTryLaunch(
-#if defined(HYPRE_USING_CUDA)
-   cudaGraphExec_t graph_exec, cudaStream_t stream
-#else
-   hipGraphExec_t graph_exec, hipStream_t stream
-#endif
-)
+hypre_GraphTryLaunch(cudaGraphExec_t graph_exec, cudaStream_t stream)
 {
-#if defined(HYPRE_USING_CUDA)
    return cudaGraphLaunch(graph_exec, stream);
-#else
-   return hipGraphLaunch(graph_exec, stream);
-#endif
 }
 
 static inline hypre_GraphError
-hypre_GraphTryDestroy(
-#if defined(HYPRE_USING_CUDA)
-   cudaGraph_t graph
-#else
-   hipGraph_t graph
-#endif
-)
+hypre_GraphTryDestroy(cudaGraph_t graph)
 {
-#if defined(HYPRE_USING_CUDA)
    return cudaGraphDestroy(graph);
-#else
-   return hipGraphDestroy(graph);
-#endif
 }
 
 static inline hypre_GraphError
-hypre_GraphTryExecDestroy(
-#if defined(HYPRE_USING_CUDA)
-   cudaGraphExec_t graph_exec
-#else
-   hipGraphExec_t graph_exec
-#endif
-)
+hypre_GraphTryExecDestroy(cudaGraphExec_t graph_exec)
 {
-#if defined(HYPRE_USING_CUDA)
    return cudaGraphExecDestroy(graph_exec);
-#else
-   return hipGraphExecDestroy(graph_exec);
-#endif
 }
+#else  /* HIP */
+typedef hipError_t hypre_GraphError;
+#define hypre_GraphSuccess hipSuccess
+
+static inline hypre_GraphError
+hypre_GraphTryStreamBeginCapture(hipStream_t stream)
+{
+   return hipStreamBeginCapture(stream, hipStreamCaptureModeThreadLocal);
+}
+
+static inline hypre_GraphError
+hypre_GraphTryStreamEndCapture(hipStream_t stream, hipGraph_t *graph)
+{
+   return hipStreamEndCapture(stream, graph);
+}
+
+static inline hypre_GraphError
+hypre_GraphTryInstantiate(hipGraphExec_t *graph_exec, hipGraph_t graph)
+{
+   return hipGraphInstantiate(graph_exec, graph, NULL, NULL, 0);
+}
+
+static inline hypre_GraphError
+hypre_GraphTryLaunch(hipGraphExec_t graph_exec, hipStream_t stream)
+{
+   return hipGraphLaunch(graph_exec, stream);
+}
+
+static inline hypre_GraphError
+hypre_GraphTryDestroy(hipGraph_t graph)
+{
+   return hipGraphDestroy(graph);
+}
+
+static inline hypre_GraphError
+hypre_GraphTryExecDestroy(hipGraphExec_t graph_exec)
+{
+   return hipGraphExecDestroy(graph_exec);
+}
+#endif  /* CUDA vs HIP */
 
 static inline hypre_GraphError
 hypre_GPUGraphReset(hypre_GPUGraphHandler *handler)
