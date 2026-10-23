@@ -4496,10 +4496,32 @@ hypre_CSRMatrixMoveDiagFirstOrderedDevice( hypre_CSRMatrix  *A )
    return hypre_error_flag;
 }
 
-/* One scalar row, preserving lower-pivot order and the zero-fill pattern. */
+/* Locate each upper-triangular suffix once, instead of rescanning a pivot
+ * row's lower prefix every time that row is used by another row. */
+__global__ void
+hypreGPUKernel_CSRMatrixILU0UpperStarts(hypre_DeviceItem &item,
+                                        HYPRE_Int        num_rows,
+                                        HYPRE_Int       *A_i,
+                                        HYPRE_Int       *A_j,
+                                        HYPRE_Int       *upper_starts)
+{
+   const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (row >= num_rows) { return; }
+   HYPRE_Int first = A_i[row] + 1;
+   HYPRE_Int last = A_i[row + 1];
+   while (first < last)
+   {
+      const HYPRE_Int middle = first + (last - first) / 2;
+      if (A_j[middle] < row) { first = middle + 1; }
+      else { last = middle; }
+   }
+   upper_starts[row] = first;
+}
+
+/* One scalar row with ordered sparse updates and exact pivot checks. */
 static __device__ __forceinline__ void
 hypre_ILU60FactorRow(HYPRE_Int row, HYPRE_Int *A_i, HYPRE_Int *A_j,
-                     HYPRE_Complex *A_data,
+                     HYPRE_Complex *A_data, HYPRE_Int *upper_starts,
                      HYPRE_Int *error_row)
 {
    const HYPRE_Int row_start = A_i[row];
@@ -4542,17 +4564,31 @@ hypre_ILU60FactorRow(HYPRE_Int row, HYPRE_Int *A_i, HYPRE_Int *A_j,
       /*
        * Update A[row,j] -= mult * A[k,j] for j > k common to both rows.
        */
-      for (HYPRE_Int pk = k_start + 1; pk < k_end; pk++)
+      HYPRE_Int pk = upper_starts[k];
+
+      /* All update columns are greater than k. Entries through k_pos
+       * therefore cannot match; do not rescan that prefix for every pivot. */
+      HYPRE_Int pi = k_pos + 1;
+      while (pk < k_end)
       {
          const HYPRE_Int j = A_j[pk];
-         if (j <= k) { continue; }
-         for (HYPRE_Int pi = row_start; pi < row_end; pi++)
+         if (j == row)
          {
-            if (A_j[pi] == j)
+            /* j is the diagonal position of row 'row' */
+            A_data[row_start] -= mult * A_data[pk];
+            pk++;
+         }
+         else
+         {
+            while (pi < row_end && A_j[pi] < j) { pi++; }
+            /* The separately stored diagonal can still match while j < row.
+             * Once j > row, exhausting the off-diagonal entries is final. */
+            if (pi == row_end && j > row) { break; }
+            if (pi < row_end && A_j[pi] == j)
             {
                A_data[pi] -= mult * A_data[pk];
-               break;
             }
+            pk++;
          }
       }
    }
@@ -4572,20 +4608,67 @@ hypreGPUKernel_CSRMatrixILU0LevelSetFactorize(hypre_DeviceItem &item,
                                               HYPRE_Int *level_set_rows,
                                               HYPRE_Int *A_i, HYPRE_Int *A_j,
                                               HYPRE_Complex *A_data,
+                                              HYPRE_Int *upper_starts,
                                               HYPRE_Int *error_row)
 {
    const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
    if (tid < level_set_size)
    {
       hypre_ILU60FactorRow(level_set_rows[tid], A_i, A_j, A_data,
-                           error_row);
+                           upper_starts, error_row);
    }
+}
+
+/* Every level in this bounded batch fits the one block. Synchronizing all
+ * threads orders predecessor factor writes before the next dependent level. */
+__global__ void
+hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock(hypre_DeviceItem &item,
+                                                         HYPRE_Int num_levels,
+                                                         HYPRE_Int *level_set_offsets,
+                                                         HYPRE_Int *level_set_rows,
+                                                         HYPRE_Int *A_i, HYPRE_Int *A_j,
+                                                         HYPRE_Complex *A_data,
+                                                         HYPRE_Int *upper_starts,
+                                                         HYPRE_Int *error_row)
+{
+   const HYPRE_Int tid = (HYPRE_Int) hypre_gpu_get_thread_id<1>(item);
+   for (HYPRE_Int lvl = 0; lvl < num_levels; lvl++)
+   {
+      const HYPRE_Int offset = level_set_offsets[lvl];
+      const HYPRE_Int size = level_set_offsets[lvl + 1] - offset;
+      if (tid < size)
+      {
+         hypre_ILU60FactorRow(level_set_rows[offset + tid], A_i, A_j, A_data,
+                              upper_starts, error_row);
+      }
+      __syncthreads();
+   }
+}
+
+/* Consecutive levels that fit in one block can share a kernel. Scalar
+ * batches use the full legal block capacity and size the block to their
+ * widest level. Block synchronization preserves the dependency order. */
+static HYPRE_Int
+hypre_ILU60SingleBlockBatchEnd(HYPRE_Int *offsets, HYPRE_Int first,
+                               HYPRE_Int num_levels, HYPRE_Int block_size,
+                               HYPRE_Int *max_width)
+{
+   HYPRE_Int end = first + 1;
+   *max_width = offsets[end] - offsets[first];
+   if (*max_width > block_size) { return end; }
+   while (end < num_levels && offsets[end + 1] - offsets[end] <= block_size)
+   {
+      *max_width = hypre_max(*max_width, offsets[end + 1] - offsets[end]);
+      end++;
+   }
+   return end;
 }
 
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
                                          HYPRE_Int        num_low_levels,
                                          HYPRE_Int       *low_set_offsets,
+                                         HYPRE_Int       *d_low_set_offsets,
                                          HYPRE_Int       *d_low_level_set_rows)
 {
    HYPRE_Int      *A_i    = hypre_CSRMatrixI(A);
@@ -4600,6 +4683,15 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
 
    dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
 
+   HYPRE_Int num_rows = hypre_CSRMatrixNumRows(A);
+   HYPRE_Int *d_upper_starts = hypre_TAlloc(HYPRE_Int, num_rows, HYPRE_MEMORY_DEVICE);
+   if (num_rows)
+   {
+      dim3 gDim = hypre_GetDefaultDeviceGridDimension(num_rows, "thread", bDim);
+      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0UpperStarts, gDim, bDim,
+                       num_rows, A_i, A_j, d_upper_starts);
+   }
+
    /*
     * Compute level sets sequentially.
     */
@@ -4613,19 +4705,35 @@ hypre_CSRMatrixILU0LevelSetFactorization(hypre_CSRMatrix *A,
          continue;
       }
 
+      if (d_low_set_offsets)
+      {
+         HYPRE_Int width;
+         HYPRE_Int end = hypre_ILU60SingleBlockBatchEnd(low_set_offsets, lvl,
+                                                        num_low_levels, bDim.x, &width);
+         if (end > lvl + 1)
+         {
+            HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock,
+                             dim3(1), dim3(width), end - lvl, d_low_set_offsets + lvl,
+                             d_low_level_set_rows, A_i, A_j, A_data, d_upper_starts, d_error_row);
+            lvl = end - 1;
+            continue;
+         }
+      }
+
       {
          dim3 gDim = hypre_GetDefaultDeviceGridDimension(level_set_size, "thread", bDim);
 
          HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetFactorize, gDim, bDim,
                           level_set_size,
                           d_low_level_set_rows + level_offset,
-                          A_i, A_j, A_data, d_error_row);
+                          A_i, A_j, A_data, d_upper_starts, d_error_row);
       }
    }
 
    hypre_TMemcpy(&error_row, d_error_row, HYPRE_Int, 1, HYPRE_MEMORY_HOST, HYPRE_MEMORY_DEVICE);
    /* Pool deallocation may not wait for asynchronous kernels/copies. */
    hypre_ForceSyncComputeStream();
+   hypre_TFree(d_upper_starts, HYPRE_MEMORY_DEVICE);
    hypre_TFree(d_error_row, HYPRE_MEMORY_DEVICE);
    if (error_row < hypre_CSRMatrixNumRows(A))
    {
@@ -4699,20 +4807,108 @@ hypreGPUKernel_CSRMatrixILU0LevelSetSolve(hypre_DeviceItem  &item,
 }
 
 
+template <HYPRE_Int upper>
+__global__ void __launch_bounds__(1024u)
+hypreGPUKernel_CSRMatrixILU0LevelSetSolveSingleBlock(hypre_DeviceItem  &item,
+                                                     HYPRE_Int          num_levels,
+                                                     HYPRE_Int         *level_set_offsets,
+                                                     HYPRE_Int         *level_set_rows,
+                                                     HYPRE_Int         *A_i,
+                                                     HYPRE_Int         *A_j,
+                                                     HYPRE_Complex     *A_data,
+                                                     HYPRE_Complex     *f)
+{
+   const HYPRE_Int row_index = (HYPRE_Int) hypre_gpu_get_thread_id<1>(item);
+   for (HYPRE_Int lvl = 0; lvl < num_levels; lvl++)
+   {
+      const HYPRE_Int offset = level_set_offsets[lvl];
+      const HYPRE_Int size = level_set_offsets[lvl + 1] - offset;
+      if (row_index < size)
+      {
+         hypre_ILU60SolveRow<upper>(level_set_rows[offset + row_index],
+                                    A_i, A_j, A_data, f);
+      }
+      __syncthreads();
+   }
+}
+
+/* A Debug launch must not synchronize while a graph capture is active.
+ * Check native launch status after each enqueue in both build modes. */
+#define hypre_ILU60Launch(kernel, grid, block, ...) do { \
+   hypre_DeviceItem item = NULL; \
+   kernel <<< (grid), (block), 0, hypre_HandleComputeStream(hypre_handle()) >>> \
+      (item, __VA_ARGS__); \
+} while (0)
+HYPRE_Int
+hypre_CSRMatrixILU0LevelSetTraverse(hypre_CSRMatrix *A, HYPRE_Int upper,
+                                    HYPRE_Int num_levels, HYPRE_Int *offsets,
+                                    HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *f,
+                                    HYPRE_Int block_capacity)
+{
+   /* Preserve the scalar-level launch width; batching has its own capacity. */
+   dim3 bDim(128);
+   for (HYPRE_Int level = 0; level < num_levels; level++)
+   {
+      HYPRE_Int size = offsets[level + 1] - offsets[level];
+      if (!size) { continue; }
+      HYPRE_Int width, end = level + 1;
+      if (d_offsets)
+      {
+         end = hypre_ILU60SingleBlockBatchEnd(offsets, level, num_levels,
+                                              block_capacity, &width);
+      }
+      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
+      if (d_offsets && (end > level + 1 ||
+                        (block_capacity == HYPRE_MAX_NTHREADS_BLOCK && size <= block_capacity)))
+      {
+         if (upper)
+         {
+            hypre_ILU60Launch(hypreGPUKernel_CSRMatrixILU0LevelSetSolveSingleBlock<1>,
+                             dim3(1), dim3(width), end - level, d_offsets + level,
+                             rows, hypre_CSRMatrixI(A), hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+         }
+         else
+         {
+            hypre_ILU60Launch(hypreGPUKernel_CSRMatrixILU0LevelSetSolveSingleBlock<0>,
+                             dim3(1), dim3(width), end - level, d_offsets + level,
+                             rows, hypre_CSRMatrixI(A), hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+         }
+         level = end - 1;
+      }
+      else if (upper)
+      {
+         hypre_ILU60Launch(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<1>, gDim, bDim,
+                          size, rows + offsets[level], hypre_CSRMatrixI(A),
+                          hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      }
+      else
+      {
+         hypre_ILU60Launch(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<0>, gDim, bDim,
+                          size, rows + offsets[level], hypre_CSRMatrixI(A),
+                          hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      }
+#if defined(HYPRE_USING_CUDA)
+      cudaError_t error = cudaGetLastError();
+      if (error != cudaSuccess) { return (HYPRE_Int) error; }
+#else
+      hipError_t error = hipGetLastError();
+      if (error != hipSuccess) { return (HYPRE_Int) error; }
+#endif
+   }
+   return 0;
+}
+
+
+#undef hypre_ILU60Launch
+
 HYPRE_Int
 hypre_CSRMatrixILU0LevelSetLSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
                                   HYPRE_Int *offsets, HYPRE_Int *rows,
                                   HYPRE_Complex *f)
 {
-   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
-   for (HYPRE_Int level = 0; level < num_levels; level++)
+   if (hypre_CSRMatrixILU0LevelSetTraverse(A, 0, num_levels, offsets, NULL, rows, f, 0))
    {
-      HYPRE_Int size = offsets[level + 1] - offsets[level];
-      if (!size) { continue; }
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<0>, gDim, bDim,
-                       size, rows + offsets[level], hypre_CSRMatrixI(A),
-                       hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
    }
    return hypre_error_flag;
 }
@@ -4722,15 +4918,9 @@ hypre_CSRMatrixILU0LevelSetUSolve(hypre_CSRMatrix *A, HYPRE_Int num_levels,
                                   HYPRE_Int *offsets, HYPRE_Int *rows,
                                   HYPRE_Complex *f)
 {
-   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
-   for (HYPRE_Int level = 0; level < num_levels; level++)
+   if (hypre_CSRMatrixILU0LevelSetTraverse(A, 1, num_levels, offsets, NULL, rows, f, 0))
    {
-      HYPRE_Int size = offsets[level + 1] - offsets[level];
-      if (!size) { continue; }
-      dim3 gDim = hypre_GetDefaultDeviceGridDimension(size, "thread", bDim);
-      HYPRE_GPU_LAUNCH(hypreGPUKernel_CSRMatrixILU0LevelSetSolve<1>, gDim, bDim,
-                       size, rows + offsets[level], hypre_CSRMatrixI(A),
-                       hypre_CSRMatrixJ(A), hypre_CSRMatrixData(A), f);
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 uncaptured triangular launch failed");
    }
    return hypre_error_flag;
 }

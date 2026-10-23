@@ -147,6 +147,9 @@ parallel. Type 60 is supported on CUDA and HIP devices, and not CPU or SYCL.
 The preconditioners requires a system with a diagonal entry on each row. RCM
 reordering is also supported.
 
+Narrow dependency levels share a thread block. Larger triangular solves can
+reuse a captured GPU graph. Symmetric factors are stored in level order.
+
 .. _ilu-amg-smoother:
 
 ILU as Smoother for BoomerAMG

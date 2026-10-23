@@ -8,6 +8,7 @@
 #include "_hypre_onedpl.hpp"
 #include "_hypre_parcsr_ls.h"
 #include "_hypre_utilities.hpp"
+#include "par_ilu_device.h"
 
 #if defined(HYPRE_USING_GPU)
 
@@ -1223,9 +1224,98 @@ hypre_ILUSolveRAPGMRESDevice(hypre_ParCSRMatrix   *A,
    return hypre_error_flag;
 }
 
-/* Apply a correction in factor coordinates, one kernel per level. */
+/* Capture multi-block level traversals once per set of factor/schedule/RHS
+ * identities. The single-block path uses its direct synchronized kernel. */
 HYPRE_Int
-hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
+hypre_ILU60TriangularSolve(hypre_ParILUData *owner, HYPRE_Int upper,
+                           hypre_CSRMatrix *A, HYPRE_Int num_levels,
+                           HYPRE_Int *offsets, HYPRE_Int *d_offsets, HYPRE_Int *rows, HYPRE_Complex *rhs)
+{
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   if (!hypre_CSRMatrixNumRows(A)) { return hypre_error_flag; }
+   if (owner->ls_singleblock && d_offsets)
+   {
+      if (hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels, offsets,
+                                              d_offsets, rows, rhs, HYPRE_MAX_NTHREADS_BLOCK))
+      {
+         hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 single-block triangular launch failed");
+      }
+      return hypre_error_flag;
+   }
+   auto stream = hypre_HandleComputeStream(hypre_handle());
+   auto cache = (hypre_ILU60GraphCache *) owner->ls_graph[upper];
+   if (!cache)
+   {
+      cache = hypre_CTAlloc(hypre_ILU60GraphCache, 1, HYPRE_MEMORY_HOST);
+      if (!cache) { return hypre_error_flag; }
+      owner->ls_graph[upper] = cache;
+   }
+   auto g = &cache->handler;
+   if (g->is_ready && (cache->stream != stream || cache->ia != hypre_CSRMatrixI(A) ||
+                       cache->ja != hypre_CSRMatrixJ(A) || cache->values != hypre_CSRMatrixData(A) ||
+                       cache->offsets != offsets || cache->device_offsets != d_offsets || cache->rows != rows ||
+                       cache->rhs != rhs || cache->num_levels != num_levels))
+   {
+      g->is_ready = 0;
+   }
+   if (!g->is_ready)
+   {
+      if (g->graph || g->graph_exec)
+      {
+         hypre_DeviceGraphCall(hypre_ILU60DeviceSynchronize());
+         hypre_ILU60CacheReset(cache);
+      }
+      hypre_DeviceGraphStreamBeginCapture(stream);
+      HYPRE_Int traversal_error = hypre_CSRMatrixILU0LevelSetTraverse(A, upper, num_levels,
+                                                                        offsets, d_offsets, rows, rhs,
+                                                                        HYPRE_MAX_NTHREADS_BLOCK);
+      if (traversal_error)
+      {
+         /* A failed kernel launch during capture cannot be retried safely. */
+         fprintf(stderr, "ILU60 graph capture traversal failed\n");
+         abort();
+      }
+      hypre_DeviceGraphStreamEndCapture(stream, &g->graph);
+      hypre_ILU60GraphCount(1);
+      hypre_DeviceGraphInstantiate(&g->graph_exec, g->graph);
+      hypre_ILU60GraphCount(1);
+      cache->stream = stream;
+      cache->ia = hypre_CSRMatrixI(A); cache->ja = hypre_CSRMatrixJ(A);
+      cache->values = hypre_CSRMatrixData(A); cache->rows = rows;
+      cache->device_offsets = d_offsets; cache->offsets = offsets; cache->rhs = rhs;
+      cache->num_levels = num_levels;
+      g->is_ready = 1;
+   }
+   hypre_DeviceGraphLaunch(g->graph_exec, stream);
+#else
+   hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU60 triangular solves require CUDA/HIP");
+#endif
+   return hypre_error_flag;
+}
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+/* Each correction has a unique destination because perm is a permutation.
+ * Fuse the inverse permutation with the solution update to avoid writing and
+ * rereading a temporary vector between scatter and axpy. */
+__global__ void
+hypreGPUKernel_ILU60Update(hypre_DeviceItem &item,
+                           HYPRE_Int       num_rows,
+                           HYPRE_Int      *perm,
+                           HYPRE_Complex  *correction,
+                           HYPRE_Complex  *solution)
+{
+   const HYPRE_Int row = (HYPRE_Int) hypre_gpu_get_grid_thread_id<1, 1>(item);
+   if (row < num_rows)
+   {
+      const HYPRE_Int destination = perm ? perm[row] : row;
+      solution[destination] += correction[row];
+   }
+}
+#endif
+
+/* Apply a residual correction in factor-storage coordinates. */
+HYPRE_Int
+hypre_ILUSolveLULevelSetDevice(hypre_ParILUData *owner, hypre_ParCSRMatrix  *A,
                                hypre_CSRMatrix     *matLU_d,
                                hypre_ParVector     *f,
                                hypre_ParVector     *u,
@@ -1277,12 +1367,12 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
                     HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
    }
 
-   hypre_CSRMatrixILU0LevelSetLSolve(matLU_d, num_low_levels, low_set_offsets,
-                                     d_low_set_rows, utemp_data);
+   hypre_ILU60TriangularSolve(owner, 0, matLU_d, num_low_levels, low_set_offsets,
+                              owner->d_low_level_set_offsets, d_low_set_rows, utemp_data);
    if (!hypre_error_flag)
    {
-      hypre_CSRMatrixILU0LevelSetUSolve(matLU_d, num_upp_levels, upp_set_offsets,
-                                        d_upp_set_rows, utemp_data);
+      hypre_ILU60TriangularSolve(owner, 1, matLU_d, num_upp_levels, upp_set_offsets,
+                                 owner->d_upp_level_set_offsets, d_upp_set_rows, utemp_data);
    }
 
    if (hypre_error_flag)
@@ -1292,16 +1382,12 @@ hypre_ILUSolveLULevelSetDevice(hypre_ParCSRMatrix  *A,
       return hypre_error_flag;
    }
 
-   if (perm)
-   {
-      HYPRE_THRUST_CALL(scatter, utemp_data, utemp_data + num_rows, perm, ftemp_data);
-   }
-   else
-   {
-      hypre_TMemcpy(ftemp_data, utemp_data, HYPRE_Complex, num_rows,
-                    HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_DEVICE);
-   }
-   hypre_ParVectorAxpy(1.0, ftemp, u);
+   /* Scatter directly into the solution; the next residual overwrites ftemp. */
+   dim3 bDim = hypre_GetDefaultDeviceBlockDimension();
+   dim3 gDim = hypre_GetDefaultDeviceGridDimension(num_rows, "thread", bDim);
+   HYPRE_Complex *u_data = hypre_VectorData(hypre_ParVectorLocalVector(u));
+   HYPRE_GPU_LAUNCH(hypreGPUKernel_ILU60Update, gDim, bDim,
+                    num_rows, perm, utemp_data, u_data);
    hypre_SyncComputeStream();
 
    hypre_GpuProfilingPopRange();

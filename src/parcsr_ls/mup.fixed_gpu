@@ -1,3 +1,4 @@
+hypreGPUKernel_ILU60Update
 hypre_BatchedGaussJordanSolveDevice
 hypre_BlockDiagInvDevice
 hypre_BoomerAMGBuildDirInterpDevice
@@ -87,6 +88,8 @@ hypre_GaussElimSolveDevice
 hypre_GenerateMultiPiDevice
 hypre_GenerateMultipassPiDevice
 hypre_GetGlobalMeasureDevice
+hypre_ILU60GraphCount
+hypre_ILU60TriangularSolve
 hypre_ILUApplyLowerJacIterDevice
 hypre_ILUApplyLowerUpperJacIterDevice
 hypre_ILUApplyUpperJacIterDevice

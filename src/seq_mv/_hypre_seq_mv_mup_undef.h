@@ -64,6 +64,8 @@
 #undef hypre_CSRMatrixComputeColSum
 #undef hypre_CSRMatrixComputeColSumHost
 #undef hypre_CSRMatrixComputeLevelSetsHost
+#undef hypre_CSRMatrixComputeLevelSetsOrderedHost
+#undef hypre_CSRMatrixComputeLevelSetsSymmetricHost
 #undef hypre_CSRMatrixComputeRowSum
 #undef hypre_CSRMatrixComputeRowSumHost
 #undef hypre_CSRMatrixDeleteZeros
@@ -190,7 +192,10 @@
 #undef hypre_SeqVectorSumEltsHost
 #undef hypre_CSRMatrixSpMVAnalysisDevice
 #undef hypreGPUKernel_CSRMatrixILU0LevelSetFactorize
+#undef hypreGPUKernel_CSRMatrixILU0LevelSetFactorizeSingleBlock
 #undef hypreGPUKernel_CSRMatrixILU0LevelSetSolve
+#undef hypreGPUKernel_CSRMatrixILU0LevelSetSolveSingleBlock
+#undef hypreGPUKernel_CSRMatrixILU0UpperStarts
 #undef hypreGPUKernel_CSRMoveDiagFirstOrdered
 #undef hypre_CSRMatrixAddDevice
 #undef hypre_CSRMatrixAddPartialDevice
@@ -211,6 +216,7 @@
 #undef hypre_CSRMatrixILU0
 #undef hypre_CSRMatrixILU0LevelSetFactorization
 #undef hypre_CSRMatrixILU0LevelSetLSolve
+#undef hypre_CSRMatrixILU0LevelSetTraverse
 #undef hypre_CSRMatrixILU0LevelSetUSolve
 #undef hypre_CSRMatrixIdentityDevice
 #undef hypre_CSRMatrixIntSpMVDevice

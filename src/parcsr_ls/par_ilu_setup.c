@@ -58,6 +58,7 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
    for (HYPRE_Int row = 0; row < n && !bad; row++)
    {
       HYPRE_Int diag = 0, size;
+      HYPRE_Int ordered = 1, previous = -1;
       /* Bound both offsets before subtracting: a negative interior endpoint
        * can otherwise overflow even after a valid positive row prefix. */
       if (ia[row] < 0 || ia[row + 1] <= ia[row] || ia[row + 1] > nnz) { bad = 1; break; }
@@ -66,9 +67,18 @@ hypre_ILU60ValidateInput(hypre_CSRMatrix *A)
       {
          bad |= ja[p] < 0 || ja[p] >= n;
          diag += ja[p] == row;
+         /* Ignore the diagonal's position: both numeric column order and
+          * diagonal-first storage can have strictly ordered off-diagonals. */
+         if (ja[p] != row)
+         {
+            ordered &= ja[p] > previous;
+            previous = ja[p];
+         }
       }
       bad |= diag != 1;
-      if (!bad)
+      /* Bounded, strictly increasing off-diagonals and one diagonal prove
+       * uniqueness without sorting. Retain the general unordered-row check. */
+      if (!bad && !ordered)
       {
          /* Scratch is row-sized, even if only one row in a large sparse
           * matrix is unordered. Reuse it until a wider unordered row appears. */
@@ -211,11 +221,22 @@ hypre_ILUSetup( void               *ilu_vdata,
    }
 #endif
 
+#if defined(HYPRE_USING_GPU)
+   /* Agree before returning from a rank-local graph retirement failure. */
+   HYPRE_Int had_level_set_data = ilu_data->combined_perm_d != NULL;
+   HYPRE_Int cleanup_failed = hypre_ILULevelSetCleanup(ilu_data), any_cleanup_failed;
+   hypre_MPI_Allreduce(&cleanup_failed, &any_cleanup_failed, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
+   if (any_cleanup_failed)
+   {
+      hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU graph retirement failed on a rank; ownership retained");
+      return hypre_error_flag;
+   }
+#endif
+
    /* Type 60 has an exact ILU0 CUDA/HIP contract. */
    if (ilu_type == 60)
    {
 #if defined(HYPRE_USING_GPU)
-      hypre_ILULevelSetCleanup(ilu_data);
       /* An unsuccessful setup must not leave an automatically generated
        * permutation available for a later setup with a different size/type. */
       if (qperm != perm) { hypre_TFree(qperm, perm_memory_location); }
@@ -279,7 +300,7 @@ hypre_ILUSetup( void               *ilu_vdata,
    hypre_MPI_Comm_rank(comm, &my_id);
 
 #if defined(HYPRE_USING_GPU)
-   if (ilu_type == 60 || ilu_data->combined_perm_d)
+   if (ilu_type == 60 || had_level_set_data)
    {
       if (qperm != perm) { hypre_TFree(qperm, perm_memory_location); }
       hypre_TFree(perm, perm_memory_location);
@@ -287,7 +308,6 @@ hypre_ILUSetup( void               *ilu_vdata,
       hypre_ParILUDataPerm(ilu_data) = NULL;
       hypre_ParILUDataQPerm(ilu_data) = NULL;
    }
-   hypre_ILULevelSetCleanup(ilu_data);
    hypre_CSRMatrixDestroy(matALU_d); matALU_d = NULL;
    hypre_CSRMatrixDestroy(matSLU_d); matSLU_d = NULL;
    hypre_CSRMatrixDestroy(matBLU_d); matBLU_d = NULL;
@@ -639,7 +659,13 @@ hypre_ILUSetup( void               *ilu_vdata,
       hypre_MPI_Allreduce(&failed, &any_failed, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
       if (any_failed)
       {
-         hypre_ILULevelSetCleanup(ilu_data);
+         cleanup_failed = hypre_ILULevelSetCleanup(ilu_data);
+         hypre_MPI_Allreduce(&cleanup_failed, &any_cleanup_failed, 1, HYPRE_MPI_INT, hypre_MPI_MAX, comm);
+         if (any_cleanup_failed)
+         {
+            hypre_error_w_msg(HYPRE_ERROR_GENERIC, "ILU failed setup cleanup failed on a rank");
+            return hypre_error_flag;
+         }
          hypre_CSRMatrixDestroy(matBLU_d); matBLU_d = NULL;
          hypre_CSRMatrixDestroy(matE_d); matE_d = NULL;
          hypre_CSRMatrixDestroy(matF_d); matF_d = NULL;
